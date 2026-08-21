@@ -1,26 +1,314 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ---- Soady Poppers brand tokens (pulled from the logo, cups + menu boards) ----
+     The mascot dog in pink heart-sunglasses, lemon slices, daisies + sparkles on a
+     watercolor sky. Bubblegum pink leads, teal + lemon support, cream grounds it. */
+
+  /* Pinks — the ribbon banner + hearts. The signature color. */
+  --pink: #F0799F;           /* rose bubblegum — primary */
+  --pink-deep: #D85B84;      /* richer rose for hovers + borders */
+  --pink-soft: #FBDDE7;      /* pale pink wash */
+
+  /* Magenta — the hot "pop" accent (Big Poppa's neon, "Bougie" tags, highlights) */
+  --magenta: #E8308A;
+  --magenta-deep: #C81E73;
+
+  /* Teal / aqua — the "SODA POP SHOP" sub-banner + the dog's collar */
+  --teal: #3E9AA6;
+  --teal-deep: #256E7A;      /* dark brand band + headings */
+  --teal-soft: #CDE9EC;      /* pale aqua wash */
+  --aqua: #5BC2C9;           /* bright collar aqua */
+
+  /* Lemon — the fruit slices + lemonade board */
+  --lemon: #F4CE3C;
+  --lemon-deep: #DFA91F;     /* richer gold for text on light */
+  --lemon-soft: #FBEEB4;     /* pale lemon wash */
+  --marigold: #EDA52C;       /* the "SOADY" marigold from the hours flyer */
+
+  /* Greens — the leaves + the neon-lime kettle-corn accent */
+  --leaf: #4E9E7E;
+  --pine: #2F6E5A;
+  --lime: #AEDB45;           /* neon lime — Big Poppa's graffiti energy */
+
+  /* Warm neutrals — cream ground echoing the menu boards */
+  --cream: #F6F0DE;          /* main page background */
+  --paper: #FCF8EC;          /* lighter alt surface + cards */
+  --charcoal: #2B2630;       /* warm near-black — headings + body */
+  --ash: #5B5560;            /* muted body text */
+  --stone: #8A8390;          /* secondary text + labels */
+  --bone: #FBF6EA;           /* text on dark backgrounds */
+  --ink: #241F2B;            /* deep near-black for the Big Poppa's neon band */
+  --border: #EAE0C9;
+
+  --background: var(--cream);
+  --foreground: var(--charcoal);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* next/font variables wired up in layout.tsx */
+  --font-script: var(--font-pacifico);   /* the bouncy soda-fountain wordmark */
+  --font-display: var(--font-fredoka);   /* chunky rounded headings + menu boards */
+  --font-body: var(--font-nunito);       /* friendly body sans (shared across the family) */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Tailwind v4 preflight drops the pointer cursor on buttons — put it back */
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--cream);
+  color: var(--charcoal);
+  font-family: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-fredoka), ui-rounded, system-ui, sans-serif;
+  color: var(--charcoal);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+}
+
+/* Bouncy soda-fountain script — the wordmark + hero flourishes. Accents only. */
+.font-script {
+  font-family: var(--font-pacifico), ui-rounded, cursive;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* The pink script wordmark treatment, with a soft cream rim like the logo ribbon */
+.wordmark {
+  font-family: var(--font-pacifico), cursive;
+  color: var(--pink);
+  text-shadow: 1.5px 1.5px 0 rgba(255, 255, 255, 0.9), 3px 3px 0 rgba(216, 91, 132, 0.25);
+}
+.wordmark-cream {
+  color: var(--bone);
+  text-shadow: 1.5px 1.5px 0 rgba(37, 110, 122, 0.4), 3px 3px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* Small-caps eyebrow above section headings (the menu-board "PICK YOUR VIBE" cue) */
+.eyebrow {
+  font-family: var(--font-fredoka), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--magenta);
+}
+.eyebrow-on-dark { color: var(--lemon); }
+
+.section-padding { padding: 5.5rem 1rem; }
+@media (max-width: 768px) {
+  .section-padding { padding: 3.5rem 1rem; }
+}
+
+/* ---- Buttons ---- */
+
+/* Primary "pop" CTA — chunky candy button that presses into its shadow */
+.btn-pop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-fredoka), sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--bone);
+  background-color: var(--magenta);
+  border: 2px solid var(--charcoal);
+  border-radius: 9999px;
+  padding: 0.8rem 1.9rem;
+  box-shadow: 4px 4px 0 var(--charcoal);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.25s ease;
+}
+.btn-pop:hover {
+  background-color: var(--magenta-deep);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--charcoal);
+}
+.btn-pop:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--charcoal); }
+
+/* Teal variant — the "SODA POP SHOP" banner energy, for secondary primary actions */
+.btn-teal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-fredoka), sans-serif;
+  font-weight: 600;
+  color: var(--bone);
+  background-color: var(--teal);
+  border: 2px solid var(--charcoal);
+  border-radius: 9999px;
+  padding: 0.8rem 1.9rem;
+  box-shadow: 4px 4px 0 var(--charcoal);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.25s ease;
+}
+.btn-teal:hover {
+  background-color: var(--teal-deep);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--charcoal);
+}
+.btn-teal:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--charcoal); }
+
+/* Outline button — low-emphasis actions */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-fredoka), sans-serif;
+  font-weight: 600;
+  color: var(--charcoal);
+  background-color: transparent;
+  border: 2px solid var(--charcoal);
+  border-radius: 9999px;
+  padding: 0.8rem 1.7rem;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.14s ease;
+}
+.btn-outline:hover { background-color: var(--charcoal); color: var(--bone); transform: translateY(-1px); }
+/* On dark backgrounds */
+.btn-outline-cream { color: var(--bone); border-color: var(--bone); }
+.btn-outline-cream:hover { background-color: var(--bone); color: var(--charcoal); }
+
+/* ---- Cards ---- */
+
+/* Feature / menu card — paper panel with a candy outline that lifts + tints on hover */
+.card-pop {
+  background-color: var(--paper);
+  border: 2px solid var(--charcoal);
+  border-radius: 1.25rem;
+  box-shadow: 5px 5px 0 rgba(240, 121, 159, 0.55);
+  transition: transform 0.22s cubic-bezier(0.34, 1.5, 0.64, 1), box-shadow 0.22s ease;
+}
+.card-pop:hover {
+  transform: translateY(-4px);
+  box-shadow: 8px 10px 0 rgba(240, 121, 159, 0.6);
+}
+/* Accent-shadow variants so gridded cards can alternate color like the menu boards */
+.card-pop-teal { box-shadow: 5px 5px 0 rgba(62, 154, 166, 0.5); }
+.card-pop-teal:hover { box-shadow: 8px 10px 0 rgba(62, 154, 166, 0.55); }
+.card-pop-lemon { box-shadow: 5px 5px 0 rgba(223, 169, 31, 0.5); }
+.card-pop-lemon:hover { box-shadow: 8px 10px 0 rgba(223, 169, 31, 0.55); }
+
+/* Soft card — the airier, borderless pastel panel (about pages, quieter grids) */
+.card-soft {
+  background-color: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow: 0 12px 28px -20px rgba(43, 38, 48, 0.4);
+  transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.card-soft:hover {
+  transform: translateY(-4px);
+  border-color: var(--pink);
+  box-shadow: 0 22px 38px -22px rgba(43, 38, 48, 0.45);
+}
+
+/* Gold/lemon price pill for menu items */
+.price-tag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-fredoka), sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--charcoal);
+  background-color: var(--lemon-soft);
+  border: 1.5px solid var(--lemon-deep);
+  border-radius: 9999px;
+  padding: 0.12rem 0.7rem;
+  white-space: nowrap;
+}
+
+/* ---- Badges / chips ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-fredoka), sans-serif;
+  font-weight: 600;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--magenta-deep);
+  background-color: var(--pink-soft);
+  border-radius: 9999px;
+  padding: 0.3rem 0.85rem;
+}
+.badge-teal { color: var(--teal-deep); background-color: var(--teal-soft); }
+.badge-lemon { color: var(--lemon-deep); background-color: var(--lemon-soft); }
+.badge-on-dark { background-color: rgba(251, 246, 234, 0.16); color: var(--bone); }
+.badge-dot { width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: currentColor; }
+
+/* ---- Decorative bits ---- */
+
+/* Divider: a hairline with a center sparkle (the logo's twinkles) */
+.divider-pop {
+  width: 6rem;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--pink), transparent);
+  position: relative;
+}
+.divider-pop::after {
+  content: "✦";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--magenta);
+  font-size: 0.9rem;
+  background: var(--cream);
+  padding: 0 0.5rem;
+}
+.divider-pop-on-paper::after { background: var(--paper); }
+
+/* Hide scrollbars on horizontal strips (menu category rails) */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Subtle dotted texture — the fizzy-bubble vibe */
+.dot-texture {
+  background-image: radial-gradient(var(--pink) 1.4px, transparent 1.4px);
+  background-size: 24px 24px;
+}
+.dot-texture-teal {
+  background-image: radial-gradient(var(--teal) 1.4px, transparent 1.4px);
+  background-size: 24px 24px;
+}
+
+/* Gentle float for the mascot doodle + decorative bits */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
+}
+.floaty { animation: floaty 5s ease-in-out infinite; }
+.floaty-slow { animation: floaty 7.5s ease-in-out infinite; }
+
+/* A slow twinkle for the sparkle accents */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.twinkle { animation: twinkle 3s ease-in-out infinite; }
+
+/* ---- Entrance animations ---- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; }
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up, .floaty, .floaty-slow, .twinkle { animation: none; opacity: 1; }
 }
