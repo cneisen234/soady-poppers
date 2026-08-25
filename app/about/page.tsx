@@ -26,7 +26,7 @@ export default function AboutPage() {
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="flex justify-center">
               <Image
-                src="/real-soady.jpeg"
+                src="/real-soady.webp"
                 alt="The real dog behind the Soady Poppers logo"
                 width={900}
                 height={1100}
@@ -64,7 +64,7 @@ export default function AboutPage() {
             </div>
             <div className="flex justify-center">
               <Image
-                src="/ribbon-cutting.jpeg"
+                src="/ribbon-cutting.webp"
                 alt="Soady Poppers grand-opening ribbon cutting"
                 width={1400}
                 height={900}

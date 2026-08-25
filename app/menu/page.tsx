@@ -132,7 +132,7 @@ export default function MenuPage() {
       {/* Signature callout */}
       <section className="container mx-auto px-4 pt-12">
         <div className="rounded-[1.5rem] p-6 md:p-8 flex flex-col md:flex-row items-center gap-6" style={{ background: 'linear-gradient(120deg, var(--pink-soft), var(--lemon-soft))', border: '2px solid var(--charcoal)', boxShadow: '6px 6px 0 var(--charcoal)' }}>
-          <Image src="/soady-poppers-logo.jpg" alt="Soady Poppers mascot" width={200} height={200} className="w-24 h-24 rounded-full object-cover border-2 border-[var(--charcoal)] shrink-0" />
+          <Image src="/soady-poppers-logo.webp" alt="Soady Poppers mascot" width={200} height={200} className="w-24 h-24 rounded-full object-cover border-2 border-[var(--charcoal)] shrink-0" />
           <div className="text-center md:text-left">
             <span className="eyebrow">Our #1 seller</span>
             <h2 className="text-2xl md:text-3xl mt-1">
@@ -249,7 +249,7 @@ export default function MenuPage() {
               </div>
             </div>
             <div className="flex justify-center">
-              <Image src="/more-popcorn.jpg" alt="Bags of Big Poppa's gourmet kettle corn" width={1200} height={800} className="w-full max-w-md rounded-[1.5rem] object-cover border-2" style={{ borderColor: 'var(--lime)', boxShadow: '8px 10px 0 rgba(174,219,69,0.35)' }} />
+              <Image src="/more-popcorn.webp" alt="Bags of Big Poppa's gourmet kettle corn" width={1200} height={800} className="w-full max-w-md rounded-[1.5rem] object-cover border-2" style={{ borderColor: 'var(--lime)', boxShadow: '8px 10px 0 rgba(174,219,69,0.35)' }} />
             </div>
           </div>
         </div>

@@ -55,7 +55,7 @@ export default function Navigation() {
               onClick={() => setIsOpen(false)}
             >
               <Image
-                src="/soady-poppers-logo.jpg"
+                src="/soady-poppers-logo.webp"
                 alt="Soady Poppers Soda Pop Shop"
                 width={200}
                 height={200}
@@ -112,35 +112,38 @@ export default function Navigation() {
               </Link>
             </div>
 
-            {/* Hamburger — mobile only */}
-            <button
-              className="md:hidden relative w-10 h-10 flex items-center justify-center rounded-full transition-colors"
-              style={{ backgroundColor: isOpen ? 'var(--magenta)' : 'rgba(240, 121, 159, 0.14)' }}
-              onClick={() => setIsOpen(!isOpen)}
-              aria-label={isOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={isOpen}
-            >
-              <div className="relative w-5 h-4 flex flex-col justify-between">
-                <span
-                  className="block h-0.5 w-full transition-all origin-center rounded-full"
-                  style={{
-                    backgroundColor: isOpen ? 'var(--bone)' : 'var(--charcoal)',
-                    transform: isOpen ? 'rotate(45deg) translate(4px, 5px)' : 'none',
-                  }}
-                />
-                <span
-                  className="block h-0.5 w-full transition-all rounded-full"
-                  style={{ backgroundColor: isOpen ? 'var(--bone)' : 'var(--charcoal)', opacity: isOpen ? 0 : 1 }}
-                />
-                <span
-                  className="block h-0.5 w-full transition-all origin-center rounded-full"
-                  style={{
-                    backgroundColor: isOpen ? 'var(--bone)' : 'var(--charcoal)',
-                    transform: isOpen ? 'rotate(-45deg) translate(4px, -5px)' : 'none',
-                  }}
-                />
-              </div>
-            </button>
+            {/* Open status + hamburger — mobile only */}
+            <div className="md:hidden flex items-center gap-2.5">
+              <OpenStatus compact />
+              <button
+                className="relative w-10 h-10 flex items-center justify-center rounded-full transition-colors"
+                style={{ backgroundColor: isOpen ? 'var(--magenta)' : 'rgba(240, 121, 159, 0.14)' }}
+                onClick={() => setIsOpen(!isOpen)}
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={isOpen}
+              >
+                <div className="relative w-5 h-4 flex flex-col justify-between">
+                  <span
+                    className="block h-0.5 w-full transition-all origin-center rounded-full"
+                    style={{
+                      backgroundColor: isOpen ? 'var(--bone)' : 'var(--charcoal)',
+                      transform: isOpen ? 'rotate(45deg) translate(4px, 5px)' : 'none',
+                    }}
+                  />
+                  <span
+                    className="block h-0.5 w-full transition-all rounded-full"
+                    style={{ backgroundColor: isOpen ? 'var(--bone)' : 'var(--charcoal)', opacity: isOpen ? 0 : 1 }}
+                  />
+                  <span
+                    className="block h-0.5 w-full transition-all origin-center rounded-full"
+                    style={{
+                      backgroundColor: isOpen ? 'var(--bone)' : 'var(--charcoal)',
+                      transform: isOpen ? 'rotate(-45deg) translate(4px, -5px)' : 'none',
+                    }}
+                  />
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </nav>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { shop, topSeller, popcorn } from '@/lib/shop';
 import OpenStatus from '@/components/OpenStatus';
+import OpenSign from '@/components/OpenSign';
 
 const categories = [
   {
@@ -83,7 +84,6 @@ export default function Home() {
               </div>
               <div className="fade-in-up stagger-4 mt-6 flex items-center gap-3 justify-center lg:justify-start">
                 <OpenStatus />
-                <span style={{ color: 'var(--stone)' }}>·</span>
               </div>
             </div>
 
@@ -96,7 +96,7 @@ export default function Home() {
                 />
                 <div className="relative rounded-[1.75rem] overflow-hidden border-2 border-[var(--charcoal)] rotate-1" style={{ boxShadow: '8px 10px 0 rgba(240,121,159,0.55)' }}>
                   <Image
-                    src="/drink.jpeg"
+                    src="/drink.webp"
                     alt="A Soady Poppers layered lemonade in a logo cup"
                     width={900}
                     height={1200}
@@ -106,8 +106,10 @@ export default function Home() {
                 </div>
                 {/* floating mascot badge */}
                 <div className="absolute -top-6 -right-4 w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--charcoal)] floaty" style={{ boxShadow: '3px 3px 0 var(--charcoal)' }}>
-                  <Image src="/soady-poppers-logo.jpg" alt="Soady Poppers mascot" width={200} height={200} className="w-full h-full object-cover" />
+                  <Image src="/soady-poppers-logo.webp" alt="Soady Poppers mascot" width={200} height={200} className="w-full h-full object-cover" />
                 </div>
+                {/* Live open/closed sign — upper-left corner of the photo */}
+                <OpenSign className="absolute -top-4 -left-4 z-20 scale-90 origin-top-left" />
               </div>
             </div>
           </div>
@@ -166,7 +168,7 @@ export default function Home() {
             <div className="order-1 lg:order-2 flex justify-center">
               <div className="relative">
                 <Image
-                  src="/soady-poppers-banner.jpg"
+                  src="/soady-poppers-banner.webp"
                   alt="Soady Poppers mascot dog in heart sunglasses among lemons and flowers"
                   width={1200}
                   height={800}
@@ -208,7 +210,7 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="relative flex justify-center">
               <Image
-                src="/popcorn.jpg"
+                src="/popcorn.webp"
                 alt="Fresh kettle corn in the popper at Soady Poppers"
                 width={1200}
                 height={900}
@@ -240,8 +242,8 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="relative">
               <div className="grid grid-cols-2 gap-4">
-                <Image src="/owners.jpeg" alt="The Soady Poppers family" width={800} height={800} className="w-full h-full object-cover rounded-[1.25rem] border-2 border-[var(--charcoal)] rotate-[-2deg]" style={{ boxShadow: '5px 5px 0 rgba(62,154,166,0.5)' }} />
-                <Image src="/real-soady.jpeg" alt="The real mascot dog behind Soady Poppers" width={800} height={800} className="w-full h-full object-cover rounded-[1.25rem] border-2 border-[var(--charcoal)] rotate-[2deg] mt-6" style={{ boxShadow: '5px 5px 0 rgba(240,121,159,0.55)' }} />
+                <Image src="/owners.webp" alt="The Soady Poppers family" width={800} height={800} className="w-full h-full object-cover rounded-[1.25rem] border-2 border-[var(--charcoal)] rotate-[-2deg]" style={{ boxShadow: '5px 5px 0 rgba(62,154,166,0.5)' }} />
+                <Image src="/real-soady.webp" alt="The real mascot dog behind Soady Poppers" width={800} height={800} className="w-full h-full object-cover rounded-[1.25rem] border-2 border-[var(--charcoal)] rotate-[2deg] mt-6" style={{ boxShadow: '5px 5px 0 rgba(240,121,159,0.55)' }} />
               </div>
             </div>
             <div>

@@ -106,9 +106,9 @@ export default function VisitPage() {
           </div>
           <div className="grid sm:grid-cols-3 gap-5">
             {[
-              { src: '/pre-made-cups.jpeg', alt: 'Grab-and-go cups lined up at Soady Poppers' },
-              { src: '/popcorn.jpg', alt: "Fresh kettle corn in the popper" },
-              { src: '/owners.jpeg', alt: 'The Soady Poppers family' },
+              { src: '/pre-made-cups.webp', alt: 'Grab-and-go cups lined up at Soady Poppers' },
+              { src: '/popcorn.webp', alt: "Fresh kettle corn in the popper" },
+              { src: '/owners.webp', alt: 'The Soady Poppers family' },
             ].map((p, i) => (
               <div
                 key={p.src}

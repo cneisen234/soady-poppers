@@ -21,7 +21,7 @@ export default function Footer() {
           <div className="md:col-span-5">
             <div className="flex items-center gap-3 mb-4">
               <Image
-                src="/soady-poppers-logo.jpg"
+                src="/soady-poppers-logo.webp"
                 alt="Soady Poppers Soda Pop Shop"
                 width={200}
                 height={200}
@@ -120,7 +120,18 @@ export default function Footer() {
           style={{ borderColor: 'rgba(251, 246, 234, 0.16)', color: 'var(--bone)', opacity: 0.72 }}
         >
           <p>&copy; {new Date().getFullYear()} {shop.fullName}. Made fresh in Fairview, Michigan.</p>
-          <p className="text-xs">Dirty Sodas · Lemonade · Kettle Corn</p>
+          <p className="text-xs">
+            Website by{' '}
+            <a
+              href="https://www.kindlingdigital.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:underline"
+              style={{ color: 'var(--lemon)' }}
+            >
+              Kindling Digital
+            </a>
+          </p>
         </div>
       </div>
     </footer>
