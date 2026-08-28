@@ -3,6 +3,15 @@ import Image from 'next/image';
 import { shop, topSeller, popcorn } from '@/lib/shop';
 import OpenStatus from '@/components/OpenStatus';
 import OpenSign from '@/components/OpenSign';
+import { Drips, Splat, TapedPhoto, vars } from '@/components/bp-graffiti';
+
+// Cycle neon fills + hand-slapped rotations for the Big Poppa's flavor stickers.
+const BP_STICKER = [
+  { fill: 'var(--bp-yellow)', rot: -4 },
+  { fill: 'var(--bp-lime)', rot: 3 },
+  { fill: 'var(--bp-pink)', rot: -3 },
+  { fill: 'var(--bp-cyan)', rot: 5 },
+];
 
 const categories = [
   {
@@ -27,7 +36,7 @@ const categories = [
     emoji: '⚡',
   },
   {
-    href: '/menu#popcorn',
+    href: '/big-poppas',
     label: 'Kettle Corn',
     blurb: "Big Poppa's, popped fresh and hand-bagged.",
     accent: 'var(--pink-deep)',
@@ -204,32 +213,56 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------------- BIG POPPA'S KETTLE CORN (neon counterweight) ---------------- */}
-      <section className="relative overflow-hidden" style={{ backgroundColor: 'var(--ink)' }}>
-        <div className="container mx-auto px-4 section-padding relative">
+      {/* ---------------- BIG POPPA'S KETTLE CORN (branded gateway) ---------------- */}
+      <section className="bp-scope relative overflow-hidden bp-brick">
+        <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,10,12,0.72)' }} />
+        <div className="absolute inset-0 bp-spray opacity-50" />
+        <Drips className="absolute top-0 left-0 w-full" color="var(--bp-lime)" />
+        <Splat className="absolute top-[16%] right-[6%] w-32 opacity-70 rotate-12" color="var(--bp-pink)" />
+        <Splat className="absolute bottom-[14%] left-[3%] w-28 opacity-60 -rotate-12" color="var(--bp-yellow)" />
+        <Splat className="absolute top-[54%] right-[16%] w-20 opacity-40 rotate-[160deg]" color="var(--bp-cyan)" />
+
+        <div className="container mx-auto px-4 pt-28 pb-20 md:pt-32 md:pb-24 relative">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div className="relative flex justify-center">
-              <Image
-                src="/popcorn.webp"
-                alt="Fresh kettle corn in the popper at Soady Poppers"
-                width={1200}
-                height={900}
-                className="w-full max-w-md rounded-[1.5rem] object-cover border-2"
-                style={{ borderColor: 'var(--lime)', boxShadow: '8px 10px 0 rgba(174,219,69,0.35)' }}
-              />
+            <div className="flex justify-center">
+              <TapedPhoto rotate={-2} className="w-full max-w-md">
+                <div
+                  className="relative overflow-hidden"
+                  style={{ border: '5px solid var(--bp-bone)', borderRadius: '10px', boxShadow: '0 20px 44px -18px rgba(0,0,0,0.85)' }}
+                >
+                  <Image
+                    src="/popcorn6.webp"
+                    alt="Big Poppa's red, white & blue Bomb Pop kettle corn, fresh popped"
+                    width={900}
+                    height={1100}
+                    className="block w-full h-auto object-cover"
+                  />
+                </div>
+              </TapedPhoto>
             </div>
             <div>
-              <span className="eyebrow mb-3 inline-block" style={{ color: 'var(--lime)' }}>Home of</span>
-              <h2 className="text-4xl md:text-5xl" style={{ color: 'var(--bone)' }}>
-                Big Poppa’s <span style={{ color: 'var(--magenta)' }}>Kettle Corn</span>
+              <span className="bp-swipe bp-graffiti text-lg tracking-[0.12em]" style={vars({ color: '#0a0a0c', '--bp-swipe-color': 'var(--bp-cyan)' })}>
+                Home of
+              </span>
+              <h2 className="bp-throw text-5xl md:text-6xl mt-3" style={vars({ '--bp-fill': 'var(--bp-bone)', '--bp-shadow': 'var(--bp-pink)' })}>
+                Big Poppa’s Kettle Corn
               </h2>
-              <p className="mt-4 text-lg max-w-md" style={{ color: 'var(--bone)', opacity: 0.85 }}>
-                {popcorn.tagline} {popcorn.note}
+              <p className="mt-5 text-lg max-w-md" style={{ color: 'var(--bp-bone)', opacity: 0.85 }}>
+                {popcorn.tagline}
               </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {popcorn.flavors.map((fl) => (
-                  <span key={fl} className="badge badge-on-dark">{fl}</span>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {popcorn.flavors.map((fl, i) => (
+                  <span
+                    key={fl}
+                    className="bp-sticker text-base md:text-lg"
+                    style={{ backgroundColor: BP_STICKER[i % BP_STICKER.length].fill, transform: `rotate(${BP_STICKER[i % BP_STICKER.length].rot}deg)` }}
+                  >
+                    {fl}
+                  </span>
                 ))}
+              </div>
+              <div className="mt-8">
+                <Link href="/big-poppas" className="bp-btn">Explore Big Poppa’s</Link>
               </div>
             </div>
           </div>

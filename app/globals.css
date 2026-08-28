@@ -331,7 +331,7 @@ h1, h2, h3, h4, h5, h6 {
   --bp-lime: #b4f52a;        /* neon lime — the "KETTLE CORN" tag */
   --bp-pink: #ff2f92;        /* hot magenta — the splatter + popcorn cloud */
   --bp-yellow: #f2e520;      /* neon caution-yellow spray */
-  --bp-purple: #7b2ff7;      /* graffiti purple accent */
+  --bp-purple: #a25cff;      /* graffiti purple accent */
   --bp-gold: #d8b45a;        /* Elite Eats premium gold */
   --bp-gold-soft: #efd9a0;
   --bp-bone: #f4f1ea;        /* light text */
@@ -356,7 +356,6 @@ h1, h2, h3, h4, h5, h6 {
 .bp-tag { font-family: var(--font-marker), var(--font-pacifico), cursive; }
 
 /* Neon glow text — one class per brand color */
-.bp-neon-cyan { color: var(--bp-cyan); text-shadow: 0 0 5px rgba(47,227,240,0.65), 0 0 18px rgba(47,227,240,0.4); }
 .bp-neon-lime { color: var(--bp-lime); text-shadow: 0 0 5px rgba(180,245,42,0.6), 0 0 18px rgba(180,245,42,0.35); }
 .bp-neon-pink { color: var(--bp-pink); text-shadow: 0 0 5px rgba(255,47,146,0.7), 0 0 20px rgba(255,47,146,0.42); }
 
@@ -385,9 +384,8 @@ h1, h2, h3, h4, h5, h6 {
     7px 7px 0 rgba(0, 0, 0, 0.6),
     11px 13px 20px rgba(0, 0, 0, 0.55);
 }
-/* Straighten individual tags so a stack of them looks hand-sprayed, not tilted the same way */
+/* Tilt a tag the opposite way so a stack looks hand-sprayed, not uniformly leaning */
 .bp-tilt-r { transform: rotate(2deg); }
-.bp-tilt-0 { transform: rotate(0deg); }
 
 /* ---- Textures ---- */
 /* Spray-can dot mist — neon speckle on black, like the coaster splatter */
@@ -476,6 +474,28 @@ h1, h2, h3, h4, h5, h6 {
 }
 .bp-chip-dot { width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: currentColor; box-shadow: 0 0 8px currentColor; }
 
+/* ---- Flavor stickers ---- */
+/* Spray-painted product stickers slapped on the wall — dark text on a neon fill
+   with a chunky outline + hard block-shadow. Background color is set inline per
+   flavor. Rotation comes inline too; hover straightens + pops the sticker. */
+.bp-sticker {
+  display: inline-block;
+  font-family: var(--font-bangers), sans-serif;
+  letter-spacing: 0.03em;
+  font-size: clamp(1.05rem, 0.9rem + 1.3vw, 1.85rem);
+  line-height: 1;
+  color: #08080a;
+  padding: 0.5rem 1.05rem 0.4rem;
+  border: 2.5px solid #08080a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.bp-sticker:hover {
+  transform: translateY(-3px) rotate(0deg) scale(1.05) !important;
+  box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.6);
+}
+
 /* ---- Cards ---- */
 .bp-card {
   position: relative; overflow: hidden;
@@ -485,9 +505,6 @@ h1, h2, h3, h4, h5, h6 {
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .bp-card:hover { transform: translateY(-5px); }
-
-/* A thin neon rule with a spray-dot center, like divider-pop but neon */
-.bp-rule { width: 5.5rem; height: 3px; border-radius: 9999px; background: linear-gradient(to right, transparent, var(--bp-pink), transparent); box-shadow: 0 0 10px rgba(255,47,146,0.6); }
 
 /* Subtle flicker for the hero neon sign */
 @keyframes bp-flicker {

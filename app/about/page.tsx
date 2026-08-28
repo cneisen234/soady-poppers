@@ -54,8 +54,15 @@ export default function AboutPage() {
               <span className="eyebrow mb-3 inline-block">Family-owned</span>
               <h2 className="text-3xl md:text-4xl">Proud to be part of Fairview</h2>
               <p className="mt-4 text-lg" style={{ color: 'var(--ash)' }}>
-            Soady Poppers is our family’s little corner of town — and home of Big Poppa’s Kettle
-                Corn, popped fresh right here.
+                Soady Poppers is our family’s little corner of town — and home of{' '}
+                <Link
+                  href="/big-poppas"
+                  className="bp-graffiti align-baseline transition-opacity hover:opacity-80"
+                  style={{ color: 'var(--magenta)', fontSize: '1.18em', letterSpacing: '0.01em' }}
+                >
+                  Big Poppa’s Kettle Corn
+                </Link>
+                , popped fresh right here.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/menu" className="btn-pop">See the Menu</Link>

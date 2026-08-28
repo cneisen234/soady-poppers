@@ -40,9 +40,18 @@ export default function Footer() {
             <p className="text-sm leading-relaxed max-w-sm" style={{ color: 'var(--bone)', opacity: 0.78 }}>
               {shop.blurb}
             </p>
-            <p className="mt-5 font-script text-2xl" style={{ color: 'var(--lemon)' }}>
-              Home of {shop.kettleCorn}
-            </p>
+            <Link href="/big-poppas" className="group mt-5 inline-block transition-transform hover:-translate-y-0.5">
+              <span
+                className="block text-[0.66rem] font-bold uppercase tracking-[0.22em]"
+                style={{ color: 'var(--bone)', opacity: 0.68, fontFamily: 'var(--font-fredoka)' }}
+              >
+                Home of
+              </span>
+              <span className="bp-graffiti text-3xl leading-none" style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.28)' }}>
+                <span style={{ color: 'var(--lime)' }}>Big Poppa&rsquo;s</span>{' '}
+                <span style={{ color: 'var(--magenta)' }}>Kettle Corn</span>
+              </span>
+            </Link>
           </div>
 
           {/* Explore */}

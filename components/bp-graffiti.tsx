@@ -1,14 +1,19 @@
 // ---------------------------------------------------------------------------
-// Big Poppa's graffiti toolkit — hand-drawn SVG street-art elements used only
-// on the /big-poppas page. Everything here is decorative + server-safe (no
-// hooks, no client JS): spray-paint drips, wet splatter, marker tags, taped
-// stickers and hip-hop motifs (cassette, crown). Keeps the page component
-// readable while giving it a real graffiti-wall feel instead of a clean sign.
+// Big Poppa's graffiti toolkit — hand-drawn SVG street-art elements shared by
+// the /big-poppas page and the branded Big Poppa's teaser bands on the home +
+// menu pages. Everything here is decorative + server-safe (no hooks, no client
+// JS): spray-paint drips, wet splatter, spray arrows, taped photos and hip-hop
+// motifs (cassette, crown), plus the `vars` helper for setting --bp-* CSS
+// custom properties (these React types have no `--${string}` index signature).
 // ---------------------------------------------------------------------------
 import type { CSSProperties, ReactNode } from 'react';
-import Image from 'next/image';
 
 type Deco = { className?: string; style?: CSSProperties; color?: string };
+
+/** Build a style object carrying CSS custom properties (--bp-*), cast once. */
+export function vars(v: Record<string, string>): CSSProperties {
+  return v as CSSProperties;
+}
 
 /**
  * A ragged edge of wet paint dripping down — the signature graffiti touch.
@@ -22,31 +27,68 @@ export function Drips({
   className = '',
   style,
   color = 'var(--bp-pink)',
-  height = 60,
+  height = 88,
 }: Deco & { height?: number }) {
   // Stable, unique-per-color pattern id (multiple Drips render on one page).
   const id = `bpdrip-${color.replace(/[^a-z0-9]/gi, '')}`;
+  const BAND = 11; // thickness of the pooled paint edge
+
+  // One ~300px tile of drips with wildly uneven lengths — a few short nubs,
+  // a couple of long thin runs that streak way down (like the coaster).
+  const drips = [
+    { x: 16, w: 20, len: 24 },
+    { x: 50, w: 11, len: 58 },
+    { x: 84, w: 26, len: 18 },
+    { x: 120, w: 14, len: 40 },
+    { x: 150, w: 9, len: 68 },
+    { x: 178, w: 24, len: 28 },
+    { x: 214, w: 12, len: 48 },
+    { x: 246, w: 20, len: 20 },
+    { x: 276, w: 13, len: 54 },
+  ];
+  // Bumps that make the pooled top edge blobby instead of a ruler-straight line.
+  const bumps = [
+    { cx: 40, cy: BAND, r: 7 },
+    { cx: 110, cy: BAND + 1, r: 6 },
+    { cx: 200, cy: BAND, r: 8 },
+    { cx: 265, cy: BAND + 1, r: 6 },
+  ];
+  // Loose overspray — scattered specks flung off the can, all over the tile.
+  const specks = [
+    { cx: 34, cy: 40, r: 3 }, { cx: 68, cy: 80, r: 4.5 }, { cx: 100, cy: 52, r: 2.5 },
+    { cx: 134, cy: 70, r: 3.5 }, { cx: 165, cy: 84, r: 3 }, { cx: 196, cy: 58, r: 2.5 },
+    { cx: 230, cy: 78, r: 4 }, { cx: 262, cy: 46, r: 2.5 }, { cx: 290, cy: 66, r: 3 },
+    { cx: 12, cy: 62, r: 2 }, { cx: 118, cy: 86, r: 2 }, { cx: 208, cy: 34, r: 2 },
+    { cx: 300, cy: 30, r: 2.5 }, { cx: 0, cy: 44, r: 2.5 },
+  ];
+
   return (
     <svg
       width="100%"
       height={height}
       className={className}
-      style={{ display: 'block', filter: `drop-shadow(0 2px 8px ${color})`, ...style }}
+      style={{ display: 'block', filter: `drop-shadow(0 2px 7px ${color})`, ...style }}
       aria-hidden="true"
     >
       <defs>
-        {/* one ~196px-wide tile of three varied drips + stray droplets */}
-        <pattern id={id} patternUnits="userSpaceOnUse" width="196" height={height}>
+        <pattern id={id} patternUnits="userSpaceOnUse" width="300" height={height}>
           <g fill={color}>
-            <rect x="0" y="0" width="196" height="12" />
-            <rect x="18" y="0" width="22" height="44" rx="11" />
-            <circle cx="29" cy="44" r="12.5" />
-            <rect x="80" y="0" width="13" height="23" rx="6.5" />
-            <circle cx="86.5" cy="23" r="7.5" />
-            <rect x="134" y="0" width="26" height="32" rx="13" />
-            <circle cx="147" cy="32" r="14.5" />
-            <circle cx="60" cy="38" r="4" />
-            <circle cx="178" cy="28" r="3" />
+            <rect x="0" y="0" width="300" height={BAND} />
+            {bumps.map((b, i) => (
+              <circle key={`b${i}`} cx={b.cx} cy={b.cy} r={b.r} />
+            ))}
+            {drips.map((d, i) => {
+              const tipR = Math.max((d.w / 2) * 1.15, 5);
+              return (
+                <g key={`d${i}`}>
+                  <rect x={d.x} y="0" width={d.w} height={BAND + d.len} rx={d.w / 2} />
+                  <circle cx={d.x + d.w / 2} cy={BAND + d.len} r={tipR} />
+                </g>
+              );
+            })}
+            {specks.map((s, i) => (
+              <circle key={`s${i}`} cx={s.cx} cy={s.cy} r={s.r} />
+            ))}
           </g>
         </pattern>
       </defs>
@@ -81,27 +123,6 @@ export function Splat({ className = '', style, color = 'var(--bp-pink)' }: Deco)
           <circle key={i} cx={s.cx} cy={s.cy} r={s.r} />
         ))}
       </g>
-    </svg>
-  );
-}
-
-/** A loose, hand-tagged marker circle to lasso a word — two sketchy passes. */
-export function MarkerCircle({ className = '', style, color = 'var(--bp-lime)' }: Deco) {
-  return (
-    <svg viewBox="0 0 320 150" className={className} style={style} aria-hidden="true" fill="none">
-      <path
-        d="M162 14C74 8 26 38 22 74c-4 40 66 64 148 62 78-2 126-30 124-66-3-34-70-54-140-56"
-        stroke={color}
-        strokeWidth="6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M300 68c4 22-40 46-104 52"
-        stroke={color}
-        strokeWidth="5"
-        strokeLinecap="round"
-        opacity="0.85"
-      />
     </svg>
   );
 }
@@ -160,50 +181,8 @@ export function Crown({ className = '', style, color = 'var(--bp-gold)' }: Deco)
   );
 }
 
-/**
- * A slapped sticker — an image trimmed with a chunky white border, tossed on
- * at an angle with two strips of tape. The sticker-bomb / wheatpaste look.
- */
-export function Sticker({
-  src,
-  alt,
-  width,
-  height,
-  rotate = -6,
-  className = '',
-  style,
-}: {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  rotate?: number;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  return (
-    <div
-      className={`relative ${className}`}
-      style={{ transform: `rotate(${rotate}deg)`, ...style }}
-    >
-      <Tape className="left-3 -top-2 -rotate-12" />
-      <Tape className="right-4 -bottom-2 rotate-6" />
-      <div
-        className="relative overflow-hidden"
-        style={{
-          border: '5px solid var(--bp-bone)',
-          borderRadius: '10px',
-          boxShadow: '0 16px 34px -12px rgba(0,0,0,0.7)',
-        }}
-      >
-        <Image src={src} alt={alt} width={width} height={height} className="block h-auto w-full object-cover" />
-      </div>
-    </div>
-  );
-}
-
-/** A strip of translucent packing tape for stickers + taped-up photos. */
-export function Tape({ className = '', style }: { className?: string; style?: CSSProperties }) {
+/** A strip of translucent packing tape for taped-up photos (internal helper). */
+function Tape({ className = '', style }: { className?: string; style?: CSSProperties }) {
   return (
     <span
       className={`absolute z-10 ${className}`}

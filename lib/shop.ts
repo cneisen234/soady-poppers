@@ -13,7 +13,6 @@
 export const shop = {
   name: "Soady Poppers",
   fullName: "Soady Poppers Soda Pop Shop",
-  kettleCorn: "Big Poppa's Kettle Corn",
   town: "Fairview, Michigan",
   address: "2051 E Miller Rd",
   cityStateZip: "Fairview, MI 48621",
@@ -242,37 +241,40 @@ export const lattes = {
 export const popcorn = {
   id: "popcorn",
   label: "Big Poppa's Kettle Corn",
-  tagline: "",
+  tagline:
+    "Small-batch kettle corn with an attitude — popped fresh and hand-bagged right in the shop.",
   flavors: ["Original Kettle", "Caramel Apple", "Choco Cherry", "Big Apple"],
-  note: "",
 };
 
 // ---- Big Poppa's Kettle Corn — the sub-brand page (/big-poppas) ----
-export type Neon = "cyan" | "lime" | "pink" | "purple";
+export type Neon = "cyan" | "lime" | "pink" | "purple" | "yellow";
 export type BpFlavor = { name: string; tag: string; desc: string; color: Neon };
 
 export const bigPoppa = {
   name: "Big Poppa's",
   fullName: "Big Poppa's Kettle Corn",
   abbr: "BPKC",
-  // Small Batch · Big Flavor — straight off the Elite Eats label.
-  tagline: "Small Batch. Big Flavor.",
+  // Fresh Batch · Big Flavor — straight off the Elite Eats label.
+  tagline: "Fresh Batch. Big Flavor.",
   blurb:
-    "Kettle corn with an attitude — popped fresh in small batches, hand-bagged, and dialed up loud. Hip-hop grunge in a bag, straight out of the Soady Poppers shop in Fairview.",
+    "Kettle corn with an attitude — popped fresh in fresh batches, hand-bagged, and dialed up loud. Hip-hop grunge in a bag, straight out of the Soady Poppers shop in Fairview.",
 
-  // The core lineup, from the shop's flavor signs.
+  // Big Poppa's has its own Facebook, separate from the Soady Poppers page.
+  facebook: "https://www.facebook.com/bpkettlecorn/",
+
+  // The lineup, from the shop's flavor signs + the rotating small-batch board.
   flavors: [
     {
       name: "Original Kettle",
       tag: "The O.G.",
       desc: "The one that started it all — that perfect sweet-and-salty kettle crunch.",
-      color: "lime",
+      color: "yellow",
     },
     {
       name: "Caramel Apple",
       tag: "Fall in a bag",
       desc: "Crisp green apple wrapped in buttery caramel. Made with love, popped with attitude.",
-      color: "cyan",
+      color: "lime",
     },
     {
       name: "Choco Cherry",
@@ -284,7 +286,49 @@ export const bigPoppa = {
       name: "Big Apple",
       tag: "Apple crisp in every crunch",
       desc: "Bright, tart apple candy coating with straight-up East-coast swagger.",
+      color: "cyan",
+    },
+    {
+      name: "Dill With It",
+      tag: "Big dill energy",
+      desc: "Tangy dill-ranch dusting over a salty kettle crunch. Pucker up, playa.",
       color: "purple",
+    },
+    {
+      name: "Birthday Bash",
+      tag: "Pop bottles + popcorn",
+      desc: "Vanilla cake, rainbow sprinkles and enough sugar to start the whole party.",
+      color: "yellow",
+    },
+    {
+      name: "Blue Dream",
+      tag: "Coldest in the game",
+      desc: "Electric blue-razz candy shell with a loud, sweet pop of flavor.",
+      color: "cyan",
+    },
+    {
+      name: "Cinna-Man",
+      tag: "Sweet heat",
+      desc: "Warm cinnamon-sugar churro coating dusted over fresh-popped kettle corn.",
+      color: "pink",
+    },
+    {
+      name: "Bomb Pop",
+      tag: "Red, white & boom",
+      desc: "Cherry, lime and blue-razz layered up like the classic summer rocket pop.",
+      color: "cyan",
+    },
+    {
+      name: "S'mores",
+      tag: "Campfire classic",
+      desc: "Toasted marshmallow, milk chocolate and graham-cracker crunch in every bite.",
+      color: "pink",
+    },
+    {
+      name: "Caramel Cheddar",
+      tag: "Best of both worlds",
+      desc: "Sweet caramel corn tangled up with sharp cheddar — the Chicago-style mix.",
+      color: "yellow",
     },
   ] as BpFlavor[],
 
@@ -292,9 +336,9 @@ export const bigPoppa = {
   elite: {
     name: "Elite Eats",
     sub: "Premium Popcorn Collection",
-    tagline: "Small Batch · Big Flavor",
+    tagline: "Fresh Batch · Big Flavor",
     desc:
-      "The premium reserve. Loaded gourmet mixes — chocolate, nuts and caramel corn — hand-packed in small batches for when regular just won't cut it.",
+      "The premium reserve. Loaded gourmet mixes — chocolate, nuts and caramel corn — hand-packed in fresh batches.",
   },
 };
 

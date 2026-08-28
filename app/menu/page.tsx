@@ -17,6 +17,7 @@ import {
   type PriceTier,
   type Accent,
 } from '@/lib/shop';
+import { Drips, Splat, TapedPhoto, vars } from '@/components/bp-graffiti';
 
 export const metadata: Metadata = {
   title: 'Menu — Dirty Sodas, Lemonade, Energy & Kettle Corn | Soady Poppers',
@@ -31,6 +32,14 @@ const accentColor: Record<Accent, string> = {
   magenta: 'var(--magenta)',
   lime: 'var(--pine)',
 };
+
+// Cycle neon fills + hand-slapped rotations for the Big Poppa's flavor stickers.
+const BP_STICKER = [
+  { fill: 'var(--bp-yellow)', rot: -4 },
+  { fill: 'var(--bp-lime)', rot: 3 },
+  { fill: 'var(--bp-pink)', rot: -3 },
+  { fill: 'var(--bp-cyan)', rot: 5 },
+];
 
 function Tiers({ tiers }: { tiers: readonly PriceTier[] }) {
   return (
@@ -232,29 +241,6 @@ export default function MenuPage() {
         </div>
       </section>
 
-      {/* Popcorn — Big Poppa's (neon band) */}
-      <section id={popcorn.id} className="scroll-mt-24 relative overflow-hidden" style={{ backgroundColor: 'var(--ink)' }}>
-        <div className="container mx-auto px-4 section-padding relative">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <span className="eyebrow" style={{ color: 'var(--lime)' }}>Home of</span>
-              <h2 className="text-3xl md:text-5xl mt-2" style={{ color: 'var(--bone)' }}>
-                Big Poppa’s <span style={{ color: 'var(--magenta)' }}>Kettle Corn</span>
-              </h2>
-              <p className="mt-4 text-lg max-w-md" style={{ color: 'var(--bone)', opacity: 0.85 }}>
-                {popcorn.tagline} {popcorn.note}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {popcorn.flavors.map((fl) => <span key={fl} className="badge badge-on-dark">{fl}</span>)}
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <Image src="/more-popcorn.webp" alt="Bags of Big Poppa's gourmet kettle corn" width={1200} height={800} className="w-full max-w-md rounded-[1.5rem] object-cover border-2" style={{ borderColor: 'var(--lime)', boxShadow: '8px 10px 0 rgba(174,219,69,0.35)' }} />
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Add-ons + order CTA */}
       <section className="section-padding">
         <div className="container mx-auto px-4">
@@ -269,6 +255,62 @@ export default function MenuPage() {
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/visit" className="btn-pop">Hours & Directions</Link>
               <Link href="/about" className="btn-outline btn-outline-cream">Our Story</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Popcorn — Big Poppa's (branded closing gateway) */}
+      <section id={popcorn.id} className="bp-scope scroll-mt-24 relative overflow-hidden bp-brick">
+        <div className="absolute inset-0" style={{ backgroundColor: 'rgba(10,10,12,0.72)' }} />
+        <div className="absolute inset-0 bp-spray opacity-50" />
+        <Drips className="absolute top-0 left-0 w-full" color="var(--bp-pink)" />
+        <Splat className="absolute top-[18%] left-[5%] w-28 opacity-65 rotate-[200deg]" color="var(--bp-lime)" />
+        <Splat className="absolute bottom-[12%] right-[5%] w-32 opacity-60 -rotate-[30deg]" color="var(--bp-yellow)" />
+        <Splat className="absolute top-[52%] left-[22%] w-20 opacity-35 rotate-45" color="var(--bp-cyan)" />
+
+        <div className="container mx-auto px-4 pt-28 pb-20 md:pt-32 md:pb-24 relative">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <span className="bp-swipe bp-graffiti text-lg tracking-[0.12em]" style={vars({ color: '#0a0a0c', '--bp-swipe-color': 'var(--bp-cyan)' })}>
+                Also from the shop
+              </span>
+              <h2 className="bp-throw text-4xl md:text-6xl mt-3" style={vars({ '--bp-fill': 'var(--bp-bone)', '--bp-shadow': 'var(--bp-pink)' })}>
+                Big Poppa’s Kettle Corn
+              </h2>
+              <p className="mt-5 text-lg max-w-md" style={{ color: 'var(--bp-bone)', opacity: 0.85 }}>
+                {popcorn.tagline}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {popcorn.flavors.map((fl, i) => (
+                  <span
+                    key={fl}
+                    className="bp-sticker text-base md:text-lg"
+                    style={{ backgroundColor: BP_STICKER[i % BP_STICKER.length].fill, transform: `rotate(${BP_STICKER[i % BP_STICKER.length].rot}deg)` }}
+                  >
+                    {fl}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-8">
+                <Link href="/big-poppas" className="bp-btn">See All the Flavors</Link>
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <TapedPhoto rotate={2} className="w-full max-w-md">
+                <div
+                  className="relative overflow-hidden"
+                  style={{ border: '5px solid var(--bp-bone)', borderRadius: '10px', boxShadow: '0 20px 44px -18px rgba(0,0,0,0.85)' }}
+                >
+                  <Image
+                    src="/popcorn2.webp"
+                    alt="Big Poppa's flavor lineup on the shop shelf"
+                    width={1200}
+                    height={800}
+                    className="block w-full h-auto object-cover"
+                  />
+                </div>
+              </TapedPhoto>
             </div>
           </div>
         </div>
