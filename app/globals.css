@@ -52,6 +52,8 @@
   --font-script: var(--font-pacifico);   /* the bouncy soda-fountain wordmark */
   --font-display: var(--font-fredoka);   /* chunky rounded headings + menu boards */
   --font-body: var(--font-nunito);       /* friendly body sans (shared across the family) */
+  --font-graffiti: var(--font-bangers);  /* Big Poppa's loud comic-graffiti caps */
+  --font-tag: var(--font-marker);        /* Big Poppa's hand-tagged marker accents */
 }
 
 /* Tailwind v4 preflight drops the pointer cursor on buttons — put it back */
@@ -311,4 +313,193 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (prefers-reduced-motion: reduce) {
   .fade-in-up, .floaty, .floaty-slow, .twinkle { animation: none; opacity: 1; }
+}
+
+/* ============================================================================
+   BIG POPPA'S KETTLE CORN — neon graffiti sub-brand
+   A self-contained "world" that lives on the /big-poppas page only. Everything
+   is namespaced under .bp-scope so none of it bleeds into the pastel Soady
+   Poppers theme. Pulled from the brand: neon logo (cyan / lime / hot-pink on
+   black), spray-splatter coasters, brick-and-pipe shop, cassette-tape wall,
+   and the black-and-gold "Elite Eats" premium line.
+   ========================================================================== */
+.bp-scope {
+  --bp-black: #0a0a0c;       /* base canvas */
+  --bp-panel: #17161b;       /* cards + raised surfaces */
+  --bp-panel-2: #201d26;     /* alt panel */
+  --bp-cyan: #2fe3f0;        /* electric cyan — the logo's "BIG POPPA'S" */
+  --bp-lime: #b4f52a;        /* neon lime — the "KETTLE CORN" tag */
+  --bp-pink: #ff2f92;        /* hot magenta — the splatter + popcorn cloud */
+  --bp-yellow: #f2e520;      /* neon caution-yellow spray */
+  --bp-purple: #7b2ff7;      /* graffiti purple accent */
+  --bp-gold: #d8b45a;        /* Elite Eats premium gold */
+  --bp-gold-soft: #efd9a0;
+  --bp-bone: #f4f1ea;        /* light text */
+  --bp-muted: #a7a2b0;       /* secondary text */
+
+  background-color: var(--bp-black);
+  color: var(--bp-bone);
+}
+
+/* Headings inside the sub-brand switch to the graffiti face + light color */
+.bp-scope h1, .bp-scope h2, .bp-scope h3, .bp-scope h4 {
+  font-family: var(--font-bangers), var(--font-fredoka), sans-serif;
+  color: var(--bp-bone);
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  font-weight: 400;
+}
+.bp-scope p { color: var(--bp-muted); }
+
+/* ---- Type helpers ---- */
+.bp-graffiti { font-family: var(--font-bangers), var(--font-fredoka), sans-serif; letter-spacing: 0.02em; line-height: 0.95; }
+.bp-tag { font-family: var(--font-marker), var(--font-pacifico), cursive; }
+
+/* Neon glow text — one class per brand color */
+.bp-neon-cyan { color: var(--bp-cyan); text-shadow: 0 0 5px rgba(47,227,240,0.65), 0 0 18px rgba(47,227,240,0.4); }
+.bp-neon-lime { color: var(--bp-lime); text-shadow: 0 0 5px rgba(180,245,42,0.6), 0 0 18px rgba(180,245,42,0.35); }
+.bp-neon-pink { color: var(--bp-pink); text-shadow: 0 0 5px rgba(255,47,146,0.7), 0 0 20px rgba(255,47,146,0.42); }
+
+/* THROW-UP — bubble-tag lettering: a chunky dark outline behind a bright fill
+   with a hard offset block-shadow in a second color. This is what pushes the
+   page from "neon sign" into "spray-painted on a wall". Colors are driven by
+   --bp-fill / --bp-shadow so each heading can be tagged differently. */
+.bp-throw {
+  font-family: var(--font-bangers), sans-serif;
+  letter-spacing: 0.015em;
+  line-height: 0.92;
+  color: var(--bp-fill, var(--bp-cyan));
+  -webkit-text-stroke: 3px #08080a;
+  paint-order: stroke fill;
+  text-shadow:
+    3px 3px 0 var(--bp-shadow, var(--bp-pink)),
+    4px 4px 0 rgba(0, 0, 0, 0.55),
+    7px 8px 14px rgba(0, 0, 0, 0.5);
+  transform: rotate(-2deg);
+}
+/* Bigger stroke + deeper shadow for the huge hero throw-up */
+.bp-throw-hero {
+  -webkit-text-stroke-width: 5px;
+  text-shadow:
+    5px 5px 0 var(--bp-shadow, var(--bp-pink)),
+    7px 7px 0 rgba(0, 0, 0, 0.6),
+    11px 13px 20px rgba(0, 0, 0, 0.55);
+}
+/* Straighten individual tags so a stack of them looks hand-sprayed, not tilted the same way */
+.bp-tilt-r { transform: rotate(2deg); }
+.bp-tilt-0 { transform: rotate(0deg); }
+
+/* ---- Textures ---- */
+/* Spray-can dot mist — neon speckle on black, like the coaster splatter */
+.bp-spray {
+  background-image:
+    radial-gradient(rgba(255,47,146,0.12) 1.5px, transparent 1.7px),
+    radial-gradient(rgba(47,227,240,0.09) 1.5px, transparent 1.7px);
+  background-size: 28px 28px, 44px 44px;
+  background-position: 0 0, 14px 14px;
+}
+/* Brick wall — the shop's exposed red brick, dimmed way down for a dark room */
+.bp-brick {
+  background-color: #1a1013;
+  background-image:
+    linear-gradient(335deg, rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+    linear-gradient(90deg, rgba(0,0,0,0.4) 2px, transparent 2px),
+    linear-gradient(rgba(0,0,0,0.4) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255,120,90,0.05) 1px, transparent 1px);
+  background-size: auto, 62px 26px, 62px 26px, 31px 26px;
+  background-position: 0 0, 0 0, 0 0, 31px 13px;
+}
+/* Soft neon spotlight blobs (used as absolutely-positioned decor) */
+.bp-glow { filter: blur(60px); border-radius: 9999px; pointer-events: none; opacity: 0.5; }
+
+/* Grimy concrete wash — mottled dark patches for a weathered wall */
+.bp-concrete {
+  background-color: #101013;
+  background-image:
+    radial-gradient(120px 90px at 15% 20%, rgba(255,255,255,0.035), transparent 70%),
+    radial-gradient(160px 120px at 80% 30%, rgba(0,0,0,0.45), transparent 70%),
+    radial-gradient(140px 110px at 60% 80%, rgba(255,255,255,0.03), transparent 70%),
+    radial-gradient(200px 160px at 30% 90%, rgba(0,0,0,0.5), transparent 70%);
+}
+
+/* Hand-sprayed marker swipe sitting behind a small tag/eyebrow */
+.bp-swipe {
+  position: relative;
+  display: inline-block;
+  padding: 0.15rem 0.7rem;
+  isolation: isolate;
+}
+.bp-swipe::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--bp-swipe-color, var(--bp-pink));
+  opacity: 0.9;
+  /* ragged spray edges, not a tidy rectangle */
+  clip-path: polygon(2% 12%, 20% 4%, 46% 10%, 72% 2%, 96% 8%, 99% 40%, 97% 74%, 99% 94%, 74% 90%, 48% 97%, 22% 91%, 3% 96%, 1% 62%, 3% 34%);
+  transform: rotate(-1.5deg);
+}
+
+/* ---- Buttons ---- */
+.bp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  font-family: var(--font-bangers), sans-serif; letter-spacing: 0.05em; font-size: 1.05rem;
+  color: var(--bp-black); background-color: var(--bp-pink);
+  border: 2px solid var(--bp-pink); border-radius: 9999px;
+  padding: 0.72rem 1.7rem;
+  box-shadow: 0 0 18px rgba(255,47,146,0.5);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.bp-btn:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255,47,146,0.85); }
+.bp-btn:active { transform: translateY(0); }
+
+.bp-btn-ghost {
+  color: var(--bp-cyan); background-color: transparent; border-color: var(--bp-cyan);
+  box-shadow: 0 0 14px rgba(47,227,240,0.3);
+}
+.bp-btn-ghost:hover { background-color: rgba(47,227,240,0.12); box-shadow: 0 0 26px rgba(47,227,240,0.6); transform: translateY(-2px); }
+
+/* Gold Elite Eats button */
+.bp-btn-gold {
+  color: #1c150a; background-color: var(--bp-gold); border-color: var(--bp-gold);
+  box-shadow: 0 0 18px rgba(216,180,90,0.4);
+}
+.bp-btn-gold:hover { background-color: var(--bp-gold-soft); box-shadow: 0 0 28px rgba(216,180,90,0.7); transform: translateY(-2px); }
+
+/* ---- Chips / badges ---- */
+.bp-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-family: var(--font-bangers), sans-serif; letter-spacing: 0.06em; font-size: 0.82rem;
+  padding: 0.28rem 0.8rem; border-radius: 9999px;
+  border: 1.5px solid currentColor;
+}
+.bp-chip-dot { width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: currentColor; box-shadow: 0 0 8px currentColor; }
+
+/* ---- Cards ---- */
+.bp-card {
+  position: relative; overflow: hidden;
+  background-color: var(--bp-panel);
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 1rem;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.bp-card:hover { transform: translateY(-5px); }
+
+/* A thin neon rule with a spray-dot center, like divider-pop but neon */
+.bp-rule { width: 5.5rem; height: 3px; border-radius: 9999px; background: linear-gradient(to right, transparent, var(--bp-pink), transparent); box-shadow: 0 0 10px rgba(255,47,146,0.6); }
+
+/* Subtle flicker for the hero neon sign */
+@keyframes bp-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.65; }
+  94% { opacity: 1; }
+  96% { opacity: 0.85; }
+  97% { opacity: 1; }
+}
+.bp-flicker { animation: bp-flicker 6s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-flicker { animation: none; }
 }

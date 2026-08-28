@@ -235,12 +235,67 @@ export const lattes = {
 };
 
 // ---- Popcorn — Big Poppa's Kettle Corn ----
+// Big Poppa's is Soady Poppers' popcorn sub-brand — a neon hip-hop-grunge
+// kettle corn line with its own look (see /big-poppas). Flavors + puns are
+// transcribed from the shelf signage; confirm the full rotating list + pricing
+// with the owners before adding a price board.
 export const popcorn = {
   id: "popcorn",
   label: "Big Poppa's Kettle Corn",
   tagline: "",
-  flavors: ["Classic Kettle Corn", "Caramel", "Cheddar", "Rotating Gourmet Mixes"],
+  flavors: ["Original Kettle", "Caramel Apple", "Choco Cherry", "Big Apple"],
   note: "",
+};
+
+// ---- Big Poppa's Kettle Corn — the sub-brand page (/big-poppas) ----
+export type Neon = "cyan" | "lime" | "pink" | "purple";
+export type BpFlavor = { name: string; tag: string; desc: string; color: Neon };
+
+export const bigPoppa = {
+  name: "Big Poppa's",
+  fullName: "Big Poppa's Kettle Corn",
+  abbr: "BPKC",
+  // Small Batch · Big Flavor — straight off the Elite Eats label.
+  tagline: "Small Batch. Big Flavor.",
+  blurb:
+    "Kettle corn with an attitude — popped fresh in small batches, hand-bagged, and dialed up loud. Hip-hop grunge in a bag, straight out of the Soady Poppers shop in Fairview.",
+
+  // The core lineup, from the shop's flavor signs.
+  flavors: [
+    {
+      name: "Original Kettle",
+      tag: "The O.G.",
+      desc: "The one that started it all — that perfect sweet-and-salty kettle crunch.",
+      color: "lime",
+    },
+    {
+      name: "Caramel Apple",
+      tag: "Fall in a bag",
+      desc: "Crisp green apple wrapped in buttery caramel. Made with love, popped with attitude.",
+      color: "cyan",
+    },
+    {
+      name: "Choco Cherry",
+      tag: "Cherry oh, my wayward son!",
+      desc: "Rich chocolate meets sweet cherry pop — a remix you didn't know you needed.",
+      color: "pink",
+    },
+    {
+      name: "Big Apple",
+      tag: "Apple crisp in every crunch",
+      desc: "Bright, tart apple candy coating with straight-up East-coast swagger.",
+      color: "purple",
+    },
+  ] as BpFlavor[],
+
+  // The premium line — totally different register: black-and-gold, small-batch.
+  elite: {
+    name: "Elite Eats",
+    sub: "Premium Popcorn Collection",
+    tagline: "Small Batch · Big Flavor",
+    desc:
+      "The premium reserve. Loaded gourmet mixes — chocolate, nuts and caramel corn — hand-packed in small batches for when regular just won't cut it.",
+  },
 };
 
 // Add-ons that apply across the board.

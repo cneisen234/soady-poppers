@@ -10,6 +10,7 @@ import OpenStatus from './OpenStatus';
 const links = [
   { href: '/', label: 'Home' },
   { href: '/menu', label: 'Menu' },
+  { href: '/big-poppas', label: "Big Poppa's" },
   { href: '/about', label: 'Our Story' },
   { href: '/visit', label: 'Visit' },
 ];

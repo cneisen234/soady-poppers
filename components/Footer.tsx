@@ -53,6 +53,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm">
               {[
                 { href: '/menu', label: 'The Menu' },
+                { href: '/big-poppas', label: "Big Poppa's Kettle Corn" },
                 { href: '/about', label: 'Our Story' },
                 { href: '/visit', label: 'Visit & Hours' },
                 { href: shop.facebook, label: 'Facebook', external: true },

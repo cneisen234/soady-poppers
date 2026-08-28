@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Pacifico, Fredoka, Nunito_Sans } from "next/font/google";
+import { Pacifico, Fredoka, Nunito_Sans, Bangers, Permanent_Marker } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -23,6 +23,21 @@ const nunito = Nunito_Sans({
   variable: "--font-nunito",
 });
 
+// Loud comic-graffiti caps — Big Poppa's Kettle Corn display type. Scoped to
+// the /big-poppas sub-brand only (hip-hop grunge, spray-can energy).
+const bangers = Bangers({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-bangers",
+});
+
+// Hand-tagged marker — Big Poppa's flavor puns + drip captions. Accents only.
+const permanentMarker = Permanent_Marker({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-marker",
+});
+
 export const metadata: Metadata = {
   title: "Soady Poppers Soda Pop Shop — Dirty Sodas, Lemonade & Kettle Corn | Fairview, MI",
   description:
@@ -40,7 +55,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${pacifico.variable} ${fredoka.variable} ${nunito.variable} h-full antialiased`}
+      className={`${pacifico.variable} ${fredoka.variable} ${nunito.variable} ${bangers.variable} ${permanentMarker.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Navigation />
