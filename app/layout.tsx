@@ -40,6 +40,10 @@ const permanentMarker = Permanent_Marker({
 
 export const metadata: Metadata = {
   title: "Soady Poppers Soda Pop Shop — Dirty Sodas, Lemonade & Kettle Corn | Fairview, MI",
+  // Short brand name browsers use for home-screen shortcuts / new-tab tiles —
+  // without these, Chrome/Safari fall back to the "| Fairview, MI" title suffix.
+  applicationName: "Soady Poppers",
+  appleWebApp: { title: "Soady Poppers" },
   description:
     "Soady Poppers is a family-run soda pop shop in Fairview, Michigan — hand-crafted dirty sodas, fresh-squeezed lemonade, energy refreshers and Big Poppa's gourmet kettle corn. Made fresh at the counter — come on in!",
   formatDetection: { email: false, address: false, telephone: false },
