@@ -520,3 +520,8 @@ h1, h2, h3, h4, h5, h6 {
 @media (prefers-reduced-motion: reduce) {
   .bp-flicker { animation: none; }
 }
+
+/* Lift the site-wide reCAPTCHA v3 badge above the mobile order bar / cart button */
+@media (max-width: 767px) {
+  .grecaptcha-badge { bottom: 88px !important; }
+}

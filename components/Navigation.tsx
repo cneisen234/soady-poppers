@@ -10,6 +10,7 @@ import OpenStatus from './OpenStatus';
 const links = [
   { href: '/', label: 'Home' },
   { href: '/menu', label: 'Menu' },
+  { href: '/order', label: 'Order' },
   { href: '/big-poppas', label: "Big Poppa's" },
   { href: '/about', label: 'Our Story' },
   { href: '/visit', label: 'Visit' },
@@ -108,8 +109,8 @@ export default function Navigation() {
                   {shop.phone}
                 </a>
               </div>
-              <Link href="/menu" className="btn-pop text-sm">
-                See the Menu
+              <Link href="/order" className="btn-pop text-sm">
+                Order Online
               </Link>
             </div>
 
@@ -186,17 +187,6 @@ export default function Navigation() {
               })}
             </ul>
           </nav>
-
-          {/* CTA + contact at the bottom of the overlay */}
-          <div className="pt-8" style={{ borderTop: '1px solid rgba(251, 246, 234, 0.2)' }}>
-            <Link
-              href="/menu"
-              onClick={() => setIsOpen(false)}
-              className="btn-pop w-full text-lg"
-            >
-              See the Menu
-            </Link>
-          </div>
         </div>
       </div>
     </>

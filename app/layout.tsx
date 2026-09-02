@@ -1,8 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Pacifico, Fredoka, Nunito_Sans, Bangers, Permanent_Marker } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import OrderBar from "@/components/OrderBar";
+
+// reCAPTCHA v3 is behavioral — loading it site-wide lets Google build a risk
+// profile across the whole visit. The token is executed + verified only on the
+// sensitive action (order submit); see components/order/CheckoutForm.tsx.
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 // Bouncy soda-fountain script — the wordmark + hero flourishes. Accents only.
 const pacifico = Pacifico({
@@ -65,6 +72,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Navigation />
         <main className="flex-1">{children}</main>
         <Footer />
+        {/* Mobile-only floating "Order Online" bar (hidden on the order flow) */}
+        <OrderBar />
+        {RECAPTCHA_SITE_KEY && (
+          <Script
+            src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
