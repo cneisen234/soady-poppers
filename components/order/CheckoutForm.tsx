@@ -187,6 +187,10 @@ export default function CheckoutForm({
     };
   }, [lines, method]);
 
+  useEffect(() => {
+    if (placed) window.scrollTo({ top: 0, behavior: "auto" });
+  }, [placed]);
+
   async function handlePay() {
     setError(null);
     if (!name.trim()) {

@@ -38,17 +38,14 @@ export default function Storefront({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("featured");
-  const [inStockOnly, setInStockOnly] = useState(false);
 
   const q = search.trim().toLowerCase();
-  const pristine =
-    category === "all" && q === "" && sort === "featured" && !inStockOnly;
+  const pristine = category === "all" && q === "" && sort === "featured";
 
   // Filtered + sorted list used whenever the shopper engages the controls.
   const results = useMemo(() => {
     let list = catalog.products;
     if (category !== "all") list = list.filter((p) => p.categoryId === category);
-    if (inStockOnly) list = list.filter((p) => p.available);
     if (q) {
       list = list.filter(
         (p) =>
@@ -72,7 +69,7 @@ export default function Storefront({
         break;
     }
     return sorted;
-  }, [catalog.products, category, inStockOnly, q, sort]);
+  }, [catalog.products, category, q, sort]);
 
   // Default browse view: products grouped into category sections.
   const byCategory = catalog.categories.map((cat) => ({
@@ -84,7 +81,6 @@ export default function Storefront({
     setSearch("");
     setCategory("all");
     setSort("featured");
-    setInStockOnly(false);
   }
 
   // Pill inputs get the signature neo-pop offset shadow so the controls read as
@@ -117,7 +113,7 @@ export default function Storefront({
         </div>
       )}
 
-      {/* Sticky controls: search, sort, in-stock + category filter chips */}
+      {/* Sticky controls: search + sort, and category filter chips */}
       <div
         className="sticky top-18 z-30"
         style={{
@@ -127,8 +123,8 @@ export default function Storefront({
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <div className="container mx-auto px-4 py-3 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2.5">
+        <div className="container mx-auto px-4 py-2.5 space-y-2.5">
+          <div className="flex gap-2.5">
             {/* Search */}
             <div className="relative flex-1">
               <span
@@ -181,20 +177,6 @@ export default function Storefront({
                 />
               </svg>
             </div>
-
-            {/* In-stock toggle */}
-            <label
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold cursor-pointer select-none"
-              style={inputStyle}
-            >
-              <input
-                type="checkbox"
-                checked={inStockOnly}
-                onChange={(e) => setInStockOnly(e.target.checked)}
-                className="accent-[var(--magenta)]"
-              />
-              In stock
-            </label>
           </div>
 
           {/* Category filter chips */}
