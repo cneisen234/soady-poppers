@@ -38,6 +38,30 @@ function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// Square's Edit-item "Site Visibility" dropdown (under "Channels and visibility")
+// maps to the `ecom_visibility` field. Its states — confirmed against Square's
+// docs — are the EcomVisibility enum:
+//   VISIBLE      shown + purchasable online
+//   HIDDEN       seller hid it from the storefront (still buyable via direct link)
+//   UNAVAILABLE  seller hid it AND made it unpurchasable
+//   UNINDEXED    default — item was never synced to an online site (NOT hidden!)
+//
+// The v45 SDK doesn't type this field, but the catalog response is parsed with
+// `unrecognizedObjectKeys: "passthrough"`, which recurses into itemData and keeps
+// the raw key (snake_case). Verified in node_modules/square object.js:104,204.
+//
+// We drop an item only when the seller *explicitly* hid it (HIDDEN/UNAVAILABLE) —
+// that's what the vendor-fee toggle does. Crucially we do NOT treat UNINDEXED (or
+// a missing/unknown value) as hidden: this is a custom storefront, so real
+// products may never have been added to a Square Online site and would carry
+// UNINDEXED. Hiding those would blank legitimate items, so they stay shown.
+const HIDDEN_VISIBILITIES = new Set(["HIDDEN", "UNAVAILABLE"]);
+function isHiddenOnline(data: unknown): boolean {
+  const v = (data as { ecomVisibility?: unknown; ecom_visibility?: unknown }) ?? {};
+  const visibility = v.ecomVisibility ?? v.ecom_visibility;
+  return typeof visibility === "string" && HIDDEN_VISIBILITIES.has(visibility.toUpperCase());
+}
+
 /** Fetch the full catalog (items + categories) and normalize it. */
 export async function listCatalog(): Promise<Catalog> {
   const page = await square().catalog.list({ types: "ITEM,CATEGORY,IMAGE" });
@@ -55,6 +79,8 @@ export async function listCatalog(): Promise<Catalog> {
       if (url) imageUrls.set(obj.id, url);
     } else if (obj.type === "ITEM") {
       const data = obj.itemData;
+      // Hidden items (e.g. vendor fees) are removed from the storefront entirely.
+      if (isHiddenOnline(data)) continue;
       const categoryId = data?.categories?.[0]?.id ?? undefined;
       const imageId = data?.imageIds?.[0];
       if (imageId) firstImageId.set(obj.id, imageId);

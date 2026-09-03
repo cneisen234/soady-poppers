@@ -11,7 +11,7 @@ import { listCatalog } from "@/lib/catalog";
 import { orderingStatus } from "@/lib/ordering";
 import { notifyNewOrder } from "@/lib/notifications";
 import {
-  DELIVERY_FEE_CENTS,
+  deliveryFeeCents,
   isMethodAvailable,
   type FulfillmentMethod,
 } from "@/lib/fulfillment";
@@ -51,13 +51,20 @@ function lineItems(lines: CheckoutLine[]) {
   }));
 }
 
-/** Delivery fee as a Square service charge, or none for pickup. */
-function serviceChargesFor(method: FulfillmentMethod) {
-  if (method !== "delivery" || DELIVERY_FEE_CENTS <= 0) return undefined;
+/** Total item count across all cart lines — drives the tiered delivery fee. */
+function totalItemCount(lines: CheckoutLine[]): number {
+  return lines.reduce((n, l) => n + (l.qty > 0 ? l.qty : 0), 0);
+}
+
+/** Delivery fee as a Square service charge, or none for pickup / free tiers. */
+function serviceChargesFor(method: FulfillmentMethod, lines: CheckoutLine[]) {
+  if (method !== "delivery") return undefined;
+  const feeCents = deliveryFeeCents(totalItemCount(lines));
+  if (feeCents <= 0) return undefined;
   return [
     {
       name: "Local delivery",
-      amountMoney: { amount: BigInt(DELIVERY_FEE_CENTS), currency: "USD" as const },
+      amountMoney: { amount: BigInt(feeCents), currency: "USD" as const },
       calculationPhase: "SUBTOTAL_PHASE" as const,
       taxable: false,
     },
@@ -66,7 +73,7 @@ function serviceChargesFor(method: FulfillmentMethod) {
 
 /** The order shape shared by quote (calculate) and checkout (create). */
 function orderBase(lines: CheckoutLine[], method: FulfillmentMethod) {
-  const charges = serviceChargesFor(method);
+  const charges = serviceChargesFor(method, lines);
   return {
     locationId: locationId(),
     lineItems: lineItems(lines),

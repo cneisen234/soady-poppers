@@ -141,11 +141,19 @@ export default function ProductCard({
             className="btn-pop text-sm"
             style={
               !canAdd
-                ? { opacity: 0.5, cursor: "not-allowed", boxShadow: "none" }
+                ? {
+                    // Same "locked" language as the disabled fields at checkout:
+                    // muted tan fill, dashed border, muted text, no pop shadow.
+                    backgroundColor: "var(--border)",
+                    color: "var(--ash)",
+                    border: "2px dashed var(--stone)",
+                    boxShadow: "none",
+                    cursor: "not-allowed",
+                  }
                 : undefined
             }
           >
-            {justAdded ? "Added ✓" : soldOut ? "Sold Out" : "Add"}
+            {justAdded ? "Added ✓" : soldOut ? "Out of stock" : "Add"}
           </button>
         </div>
       </div>

@@ -29,6 +29,13 @@ function minPrice(p: Product): number {
     : 0;
 }
 
+// Out-of-stock products always sink to the bottom, whatever the active sort.
+// Array.sort is stable, so ordering within the in-stock and sold-out groups is
+// preserved — this only partitions available items above unavailable ones.
+function availableFirst(list: Product[]): Product[] {
+  return [...list].sort((a, b) => Number(!a.available) - Number(!b.available));
+}
+
 export default function Storefront({
   catalog,
   ordering,
@@ -68,13 +75,15 @@ export default function Storefront({
         sorted.sort((a, b) => minPrice(b) - minPrice(a));
         break;
     }
-    return sorted;
+    return availableFirst(sorted);
   }, [catalog.products, category, q, sort]);
 
   // Default browse view: products grouped into category sections.
   const byCategory = catalog.categories.map((cat) => ({
     ...cat,
-    products: catalog.products.filter((p) => p.categoryId === cat.id),
+    products: availableFirst(
+      catalog.products.filter((p) => p.categoryId === cat.id),
+    ),
   }));
 
   function clearFilters() {

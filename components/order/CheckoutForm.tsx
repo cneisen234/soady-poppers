@@ -6,7 +6,7 @@ import { useCart } from "./CartProvider";
 import { formatCents } from "./format";
 import {
   availableMethods,
-  DELIVERY_FEE_CENTS,
+  deliveryFeeCents,
   type FulfillmentMethod,
 } from "@/lib/fulfillment";
 
@@ -86,6 +86,59 @@ const US_STATES: { code: string; name: string }[] = [
   { code: "WI", name: "Wisconsin" }, { code: "WY", name: "Wyoming" },
 ];
 
+// Magenta chevron overlaid on the right of a native <select>.
+function SelectChevron() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
+    >
+      <path
+        d="M2.5 4.5 6 8l3.5-3.5"
+        stroke="var(--magenta)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// A muted padlock overlaid where the chevron would be, to signal a locked
+// (disabled) select — matches the disabledFieldStyle treatment.
+function LockGlyph() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
+    >
+      <rect
+        x="2.5"
+        y="6"
+        width="9"
+        height="6.5"
+        rx="1.3"
+        stroke="var(--stone)"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6"
+        stroke="var(--stone)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 type Totals = {
   subtotalCents: number;
   taxCents: number;
@@ -93,8 +146,19 @@ type Totals = {
   totalCents: number;
 };
 
+// Delivery is limited to these towns — city and ZIP are constrained to match.
+const DELIVERY_CITIES = ["Fairview", "Mio"];
+const DELIVERY_ZIPS = ["48647", "48621"];
+const DELIVERY_STATE = "MI"; // Michigan-only delivery area.
+
 type Address = { line1: string; line2: string; city: string; state: string; zip: string };
-const EMPTY_ADDRESS: Address = { line1: "", line2: "", city: "", state: "", zip: "" };
+const EMPTY_ADDRESS: Address = {
+  line1: "",
+  line2: "",
+  city: "",
+  state: DELIVERY_STATE,
+  zip: "",
+};
 
 export default function CheckoutForm({
   appId,
@@ -250,6 +314,19 @@ export default function CheckoutForm({
     boxShadow: "2px 2px 0 var(--charcoal)",
   };
 
+  // Shared "locked" look, brand-consistent: drop the pop shadow (that's what
+  // reads as pressable), mute the fill to the warm tan, dash the border, and use
+  // muted text — so it's unmistakably disabled. Same language as the out-of-stock
+  // button in ProductCard.
+  const disabledFieldStyle: React.CSSProperties = {
+    fontFamily: "var(--font-body)",
+    border: "2px dashed var(--stone)",
+    backgroundColor: "var(--border)",
+    color: "var(--ash)",
+    boxShadow: "none",
+    cursor: "not-allowed",
+  };
+
   // --- Confirmation ---
   if (placed) {
     const deliver = placed.method === "delivery";
@@ -301,7 +378,9 @@ export default function CheckoutForm({
     );
   }
 
-  const feeCents = totals?.feeCents ?? (method === "delivery" ? DELIVERY_FEE_CENTS : 0);
+  const itemCount = items.reduce((n, i) => n + i.qty, 0);
+  const feeCents =
+    totals?.feeCents ?? (method === "delivery" ? deliveryFeeCents(itemCount) : 0);
 
   return (
     <div className="container mx-auto px-4 py-10 grid lg:grid-cols-2 gap-10 max-w-5xl">
@@ -385,55 +464,58 @@ export default function CheckoutForm({
                 className="w-full rounded-xl px-4 py-2.5 outline-none"
                 style={inputStyle}
               />
-              <input
-                value={addr.city}
-                onChange={(e) => setAddr({ ...addr, city: e.target.value })}
-                placeholder="City *"
-                aria-label="City"
-                className="w-full rounded-xl px-4 py-2.5 outline-none"
-                style={inputStyle}
-              />
+              <div className="relative">
+                <select
+                  value={addr.city}
+                  onChange={(e) => setAddr({ ...addr, city: e.target.value })}
+                  aria-label="City"
+                  className="appearance-none w-full rounded-xl pl-4 pr-9 py-2.5 outline-none cursor-pointer"
+                  style={{ ...inputStyle, color: addr.city ? "var(--charcoal)" : "var(--stone)" }}
+                >
+                  <option value="">City *</option>
+                  {DELIVERY_CITIES.map((c) => (
+                    <option key={c} value={c} style={{ color: "var(--charcoal)" }}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <SelectChevron />
+              </div>
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <select
                     value={addr.state}
-                    onChange={(e) => setAddr({ ...addr, state: e.target.value })}
-                    aria-label="State"
-                    className="appearance-none w-full rounded-xl pl-4 pr-9 py-2.5 outline-none cursor-pointer"
-                    style={{ ...inputStyle, color: addr.state ? "var(--charcoal)" : "var(--stone)" }}
+                    disabled
+                    aria-label="State (delivery is Michigan only)"
+                    title="Delivery is available in Michigan only"
+                    className="appearance-none w-full rounded-xl pl-4 pr-9 py-2.5 outline-none cursor-not-allowed"
+                    style={disabledFieldStyle}
                   >
-                    <option value="">State *</option>
-                    {US_STATES.map((s) => (
-                      <option key={s.code} value={s.code} style={{ color: "var(--charcoal)" }}>
+                    {US_STATES.filter((s) => s.code === DELIVERY_STATE).map((s) => (
+                      <option key={s.code} value={s.code}>
                         {s.name}
                       </option>
                     ))}
                   </select>
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    aria-hidden
-                    className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
-                  >
-                    <path
-                      d="M2.5 4.5 6 8l3.5-3.5"
-                      stroke="var(--magenta)"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <LockGlyph />
                 </div>
-                <input
-                  value={addr.zip}
-                  onChange={(e) => setAddr({ ...addr, zip: e.target.value })}
-                  placeholder="ZIP *"
-                  aria-label="ZIP code"
-                  className="w-28 rounded-xl px-4 py-2.5 outline-none"
-                  style={inputStyle}
-                />
+                <div className="relative w-36">
+                  <select
+                    value={addr.zip}
+                    onChange={(e) => setAddr({ ...addr, zip: e.target.value })}
+                    aria-label="ZIP code"
+                    className="appearance-none w-full rounded-xl pl-4 pr-9 py-2.5 outline-none cursor-pointer"
+                    style={{ ...inputStyle, color: addr.zip ? "var(--charcoal)" : "var(--stone)" }}
+                  >
+                    <option value="">ZIP *</option>
+                    {DELIVERY_ZIPS.map((z) => (
+                      <option key={z} value={z} style={{ color: "var(--charcoal)" }}>
+                        {z}
+                      </option>
+                    ))}
+                  </select>
+                  <SelectChevron />
+                </div>
               </div>
             </>
           )}
