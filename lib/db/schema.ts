@@ -9,6 +9,7 @@
 //    the tax rate later never rewrites a past receipt.
 
 import { sql, relations } from "drizzle-orm";
+import type { WeekHours } from "@/lib/status";
 import {
   pgTable,
   pgEnum,
@@ -39,8 +40,10 @@ export const orderStatus = pgEnum("order_status", [
   "new",
   "preparing",
   "ready",
+  "out_for_delivery",
   "completed",
   "cancelled",
+  "refunded",
 ]);
 
 export const fulfillmentMethod = pgEnum("fulfillment_method", [
@@ -81,6 +84,10 @@ export const products = pgTable(
     // Tax override: null = inherit the global settings rate, 0 = exempt,
     // any other value = a custom rate in basis points for this product.
     taxRateBps: integer("tax_rate_bps"),
+    // Inventory: when trackInventory is on, `stock` is decremented on purchase
+    // and the item reads as sold out at 0. When off, the item is always in stock.
+    trackInventory: boolean("track_inventory").notNull().default(false),
+    stock: integer("stock").notNull().default(0),
     sort: integer("sort").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -219,7 +226,7 @@ export const settings = pgTable(
     deliveryFlatCents: integer("delivery_flat_cents").notNull().default(500),
     deliveryFlatMinItems: integer("delivery_flat_min_items").notNull().default(5),
     deliveryFreeMinItems: integer("delivery_free_min_items").notNull().default(10),
-    hours: jsonb("hours").$type<Record<string, unknown>>(),
+    hours: jsonb("hours").$type<WeekHours>(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check("settings_singleton", sql`${t.id} = 1`)],

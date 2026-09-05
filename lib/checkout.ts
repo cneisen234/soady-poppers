@@ -1,28 +1,20 @@
-// Server-side checkout: validate the cart against live Square data, quote taxes
-// + fees, and create the Order + Payment. Server-only (imports lib/square.ts).
+// Server-side checkout — prices, validates, and taxes against OUR Postgres data,
+// charges the card via Square Payments (payments only, no Square catalog/order),
+// then persists the order and decrements inventory. Server-only.
 //
-// The charged amount always comes from Square's own pricing (we send catalog
-// variation ids + quantities, never client prices), so a stale or tampered cart
-// can't change what's charged — but we still re-check availability + the kill
-// switch here so an order can't slip through for a sold-out or paused item.
+// Money is never trusted from the client: totals are recomputed here from DB
+// prices + the shop's tax/fee settings.
 
+import { eq, inArray, sql } from "drizzle-orm";
 import { square, locationId } from "@/lib/square";
-import { listCatalog } from "@/lib/catalog";
-import { orderingStatus } from "@/lib/ordering";
+import { db } from "@/lib/db";
+import { products, variations, orders, orderItems, payments } from "@/lib/db/schema";
+import { getSettings, deliveryFeeCents, type Settings } from "@/lib/settings";
 import { notifyNewOrder } from "@/lib/notifications";
-import {
-  deliveryFeeCents,
-  isMethodAvailable,
-  type FulfillmentMethod,
-} from "@/lib/fulfillment";
+import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
 
 export type CheckoutLine = { variationId: string; qty: number };
-export type Customer = {
-  name: string;
-  email?: string;
-  phone?: string;
-  note?: string;
-};
+export type Customer = { name: string; email?: string; phone?: string; note?: string };
 export type DeliveryAddress = {
   line1: string;
   line2?: string;
@@ -30,10 +22,7 @@ export type DeliveryAddress = {
   state: string;
   zip: string;
 };
-export type Fulfillment = {
-  method: FulfillmentMethod;
-  address?: DeliveryAddress;
-};
+export type Fulfillment = { method: FulfillmentMethod; address?: DeliveryAddress };
 
 export type OrderTotals = {
   subtotalCents: number;
@@ -42,86 +31,122 @@ export type OrderTotals = {
   totalCents: number;
 };
 
-export type ValidationResult = { ok: true } | { ok: false; problems: string[] };
+export type ValidationResult =
+  | { ok: true }
+  | { ok: false; problems: string[]; soldOut: string[]; paused?: boolean };
 
-function lineItems(lines: CheckoutLine[]) {
-  return lines.map((l) => ({
-    catalogObjectId: l.variationId,
-    quantity: String(l.qty),
-  }));
+const PAUSED_FALLBACK = "Online ordering is temporarily unavailable, check back soon!";
+
+/** Thrown when inventory/availability/pause changes between cart and charge. */
+export class SoldOutError extends Error {
+  problems: string[];
+  soldOut: string[];
+  paused: boolean;
+  constructor(problems: string[], soldOut: string[], paused = false) {
+    super(problems.join(" "));
+    this.name = "SoldOutError";
+    this.problems = problems;
+    this.soldOut = soldOut;
+    this.paused = paused;
+  }
 }
 
-/** Total item count across all cart lines — drives the tiered delivery fee. */
-function totalItemCount(lines: CheckoutLine[]): number {
-  return lines.reduce((n, l) => n + (l.qty > 0 ? l.qty : 0), 0);
+type LineRow = {
+  vId: string;
+  vName: string;
+  price: number;
+  vAvail: boolean;
+  vSold: boolean;
+  pId: string;
+  pName: string;
+  pAvail: boolean;
+  pHidden: boolean;
+  taxRateBps: number | null;
+  track: boolean;
+  stock: number;
+};
+
+async function queryLineRows(lines: CheckoutLine[]): Promise<Map<string, LineRow>> {
+  const ids = lines.map((l) => l.variationId);
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({
+      vId: variations.id,
+      vName: variations.name,
+      price: variations.priceCents,
+      vAvail: variations.available,
+      vSold: variations.soldOut,
+      pId: products.id,
+      pName: products.name,
+      pAvail: products.available,
+      pHidden: products.hidden,
+      taxRateBps: products.taxRateBps,
+      track: products.trackInventory,
+      stock: products.stock,
+    })
+    .from(variations)
+    .innerJoin(products, eq(variations.productId, products.id))
+    .where(inArray(variations.id, ids));
+  return new Map(rows.map((r) => [r.vId, r]));
 }
 
-/** Delivery fee as a Square service charge, or none for pickup / free tiers. */
-function serviceChargesFor(method: FulfillmentMethod, lines: CheckoutLine[]) {
-  if (method !== "delivery") return undefined;
-  const feeCents = deliveryFeeCents(totalItemCount(lines));
-  if (feeCents <= 0) return undefined;
-  return [
-    {
-      name: "Local delivery",
-      amountMoney: { amount: BigInt(feeCents), currency: "USD" as const },
-      calculationPhase: "SUBTOTAL_PHASE" as const,
-      taxable: false,
-    },
-  ];
-}
-
-/** The order shape shared by quote (calculate) and checkout (create). */
-function orderBase(lines: CheckoutLine[], method: FulfillmentMethod) {
-  const charges = serviceChargesFor(method, lines);
-  return {
-    locationId: locationId(),
-    lineItems: lineItems(lines),
-    pricingOptions: { autoApplyTaxes: true },
-    ...(charges ? { serviceCharges: charges } : {}),
-  };
-}
-
-/** Re-check the cart against live catalog + the ordering kill switch. */
-export async function validateLines(
-  lines: CheckoutLine[],
-): Promise<ValidationResult> {
-  if (!orderingStatus().acceptingOrders) {
-    return { ok: false, problems: ["Online ordering is currently paused."] };
+/** Re-check the cart against live DB data, the kill switch, and inventory. */
+export async function validateLines(lines: CheckoutLine[]): Promise<ValidationResult> {
+  const s = await getSettings();
+  if (!s.acceptingOrders) {
+    return {
+      ok: false,
+      problems: [s.pausedMessage || PAUSED_FALLBACK],
+      soldOut: [],
+      paused: true,
+    };
   }
   if (lines.length === 0) {
-    return { ok: false, problems: ["Your cart is empty."] };
+    return { ok: false, problems: ["Your cart is empty."], soldOut: [] };
   }
 
-  const catalog = await listCatalog();
-  const lookup = new Map<string, { available: boolean; name: string }>();
-  for (const p of catalog.products) {
-    for (const v of p.variations) {
-      lookup.set(v.id, {
-        available: v.available && p.available,
-        name: `${p.name} (${v.name})`,
-      });
-    }
-  }
-
+  const rows = await queryLineRows(lines);
   const problems: string[] = [];
+  const soldOut = new Set<string>();
+  const wantByProduct = new Map<string, number>();
+
   for (const line of lines) {
-    const info = lookup.get(line.variationId);
-    if (!info) {
+    const r = rows.get(line.variationId);
+    if (!r) {
       problems.push("An item in your cart is no longer available.");
-    } else if (!info.available) {
-      problems.push(`${info.name} is sold out.`);
+      soldOut.add(line.variationId);
+      continue;
     }
     if (!Number.isInteger(line.qty) || line.qty <= 0) {
       problems.push("An item has an invalid quantity.");
+      continue;
+    }
+    if (!r.vAvail || r.vSold || !r.pAvail || r.pHidden) {
+      problems.push(`${r.pName} (${r.vName}) is sold out.`);
+      soldOut.add(line.variationId);
+      continue;
+    }
+    wantByProduct.set(r.pId, (wantByProduct.get(r.pId) ?? 0) + line.qty);
+  }
+
+  // Inventory: a tracked product can't fulfil more than its stock.
+  for (const line of lines) {
+    const r = rows.get(line.variationId);
+    if (!r || !r.track || soldOut.has(line.variationId)) continue;
+    if ((wantByProduct.get(r.pId) ?? 0) > r.stock) {
+      problems.push(`${r.pName} is sold out.`);
+      soldOut.add(line.variationId);
     }
   }
 
-  return problems.length ? { ok: false, problems } : { ok: true };
+  const uniqueProblems = [...new Set(problems)];
+  return uniqueProblems.length
+    ? { ok: false, problems: uniqueProblems, soldOut: [...soldOut] }
+    : { ok: true };
 }
 
 /** Check the chosen fulfillment method is offered and has the data it needs. */
-export function validateFulfillment(f: Fulfillment): ValidationResult {
+export function validateFulfillment(f: Fulfillment): { ok: true } | { ok: false; problems: string[] } {
   if (!isMethodAvailable(f.method)) {
     return { ok: false, problems: ["That fulfillment method isn't available."] };
   }
@@ -136,65 +161,72 @@ export function validateFulfillment(f: Fulfillment): ValidationResult {
   return { ok: true };
 }
 
-function totalsFromOrder(order: {
-  totalMoney?: { amount?: bigint | null };
-  totalTaxMoney?: { amount?: bigint | null };
-  totalServiceChargeMoney?: { amount?: bigint | null };
-}): OrderTotals {
-  const totalCents = Number(order.totalMoney?.amount ?? 0n);
-  const taxCents = Number(order.totalTaxMoney?.amount ?? 0n);
-  const feeCents = Number(order.totalServiceChargeMoney?.amount ?? 0n);
-  return { subtotalCents: totalCents - taxCents - feeCents, taxCents, feeCents, totalCents };
+type SnapshotItem = {
+  variationId: string;
+  productId: string;
+  productName: string;
+  variationName: string;
+  unitPriceCents: number;
+  qty: number;
+  lineTotalCents: number;
+  taxable: boolean;
+  taxRateBps: number;
+  taxCents: number;
+  track: boolean;
+};
+
+function computeTotals(
+  rows: Map<string, LineRow>,
+  lines: CheckoutLine[],
+  method: FulfillmentMethod,
+  s: Settings,
+): { totals: OrderTotals; items: SnapshotItem[] } {
+  let subtotal = 0;
+  let tax = 0;
+  let itemCount = 0;
+  const items: SnapshotItem[] = [];
+
+  for (const line of lines) {
+    const r = rows.get(line.variationId);
+    if (!r || line.qty <= 0) continue;
+    const lineSubtotal = r.price * line.qty;
+    subtotal += lineSubtotal;
+    itemCount += line.qty;
+    // null → inherit global rate; 0 → exempt; else custom rate (basis points).
+    const rate = r.taxRateBps == null ? s.taxRateBps : r.taxRateBps;
+    const lineTax = Math.round((lineSubtotal * rate) / 10000);
+    tax += lineTax;
+    items.push({
+      variationId: r.vId,
+      productId: r.pId,
+      productName: r.pName,
+      variationName: r.vName,
+      unitPriceCents: r.price,
+      qty: line.qty,
+      lineTotalCents: lineSubtotal,
+      taxable: rate > 0,
+      taxRateBps: rate,
+      taxCents: lineTax,
+      track: r.track,
+    });
+  }
+
+  const feeCents = method === "delivery" ? deliveryFeeCents(itemCount, s) : 0;
+  const totalCents = subtotal + tax + feeCents;
+  return {
+    totals: { subtotalCents: subtotal, taxCents: tax, feeCents, totalCents },
+    items,
+  };
 }
 
-/** Preview subtotal/tax/fee/total without creating anything (Square computes them). */
+/** Preview subtotal/tax/fee/total from the DB (nothing is created). */
 export async function quoteOrder(
   lines: CheckoutLine[],
   method: FulfillmentMethod = "pickup",
 ): Promise<OrderTotals> {
-  const res = await square().orders.calculate({ order: orderBase(lines, method) });
-  return totalsFromOrder(res.order ?? {});
-}
-
-/** Build the pickup or delivery fulfillment with the customer's details. */
-function fulfillmentFor(customer: Customer, f: Fulfillment) {
-  const recipient = {
-    displayName: customer.name,
-    emailAddress: customer.email || undefined,
-    phoneNumber: customer.phone || undefined,
-  };
-
-  if (f.method === "delivery" && f.address) {
-    return {
-      type: "DELIVERY" as const,
-      state: "PROPOSED" as const,
-      deliveryDetails: {
-        scheduleType: "ASAP" as const,
-        recipient: {
-          ...recipient,
-          address: {
-            addressLine1: f.address.line1,
-            addressLine2: f.address.line2 || undefined,
-            locality: f.address.city,
-            administrativeDistrictLevel1: f.address.state,
-            postalCode: f.address.zip,
-            country: "US" as const,
-          },
-        },
-        note: customer.note || undefined,
-      },
-    };
-  }
-
-  return {
-    type: "PICKUP" as const,
-    state: "PROPOSED" as const,
-    pickupDetails: {
-      scheduleType: "ASAP" as const,
-      recipient,
-      note: customer.note || undefined,
-    },
-  };
+  const s = await getSettings();
+  const rows = await queryLineRows(lines);
+  return computeTotals(rows, lines, method, s).totals;
 }
 
 export type PlacedOrder = OrderTotals & {
@@ -203,57 +235,117 @@ export type PlacedOrder = OrderTotals & {
   method: FulfillmentMethod;
 };
 
-/** Create the Order (pickup or delivery), then charge the card. */
+function makeShortId(): string {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+/** Validate, charge the card, persist the order, and decrement stock. */
 export async function placeOrder(
   lines: CheckoutLine[],
   customer: Customer,
   sourceId: string,
   fulfillment: Fulfillment,
 ): Promise<PlacedOrder> {
-  const created = await square().orders.create({
-    idempotencyKey: crypto.randomUUID(),
-    order: {
-      ...orderBase(lines, fulfillment.method),
-      fulfillments: [fulfillmentFor(customer, fulfillment)],
-    },
-  });
+  const s = await getSettings();
 
-  const order = created.order;
-  if (!order?.id || !order.totalMoney) {
-    throw new Error("Order creation failed.");
+  // Final check (incl. inventory) immediately before charging.
+  const validation = await validateLines(lines);
+  if (!validation.ok) {
+    throw new SoldOutError(validation.problems, validation.soldOut, validation.paused);
   }
 
+  const rows = await queryLineRows(lines);
+  const { totals, items } = computeTotals(rows, lines, fulfillment.method, s);
+  if (totals.totalCents <= 0) throw new Error("Order total is invalid.");
+
+  // Charge — Square Payments only (amount computed by us).
   const payment = await square().payments.create({
     idempotencyKey: crypto.randomUUID(),
     sourceId,
-    amountMoney: order.totalMoney,
-    orderId: order.id,
+    amountMoney: { amount: BigInt(totals.totalCents), currency: "USD" as const },
     locationId: locationId(),
     autocomplete: true,
+    note: `Soady Poppers online order (${fulfillment.method})`,
+  });
+  const sqPaymentId = payment.payment?.id;
+  const paid = payment.payment?.status === "COMPLETED";
+
+  // Persist order + items + payment and decrement inventory, atomically.
+  const shortId = makeShortId();
+  await db.transaction(async (tx) => {
+    const [o] = await tx
+      .insert(orders)
+      .values({
+        shortId,
+        method: fulfillment.method,
+        customerName: customer.name,
+        customerEmail: customer.email || null,
+        customerPhone: customer.phone || null,
+        address:
+          fulfillment.method === "delivery" ? fulfillment.address ?? null : null,
+        note: customer.note || null,
+        subtotalCents: totals.subtotalCents,
+        taxCents: totals.taxCents,
+        feeCents: totals.feeCents,
+        totalCents: totals.totalCents,
+      })
+      .returning({ id: orders.id });
+
+    await tx.insert(orderItems).values(
+      items.map((it) => ({
+        orderId: o.id,
+        variationId: it.variationId,
+        productName: it.productName,
+        variationName: it.variationName,
+        unitPriceCents: it.unitPriceCents,
+        qty: it.qty,
+        lineTotalCents: it.lineTotalCents,
+        taxable: it.taxable,
+        taxRateBps: it.taxRateBps,
+        taxCents: it.taxCents,
+      })),
+    );
+
+    await tx.insert(payments).values({
+      orderId: o.id,
+      squarePaymentId: sqPaymentId ?? null,
+      status: paid ? "completed" : "pending",
+      amountCents: totals.totalCents,
+    });
+
+    // Decrement stock for tracked products (clamped at 0).
+    const decByProduct = new Map<string, number>();
+    for (const it of items) {
+      if (it.track) decByProduct.set(it.productId, (decByProduct.get(it.productId) ?? 0) + it.qty);
+    }
+    for (const [pid, qty] of decByProduct) {
+      await tx
+        .update(products)
+        .set({ stock: sql`GREATEST(${products.stock} - ${qty}, 0)`, updatedAt: new Date() })
+        .where(eq(products.id, pid));
+    }
   });
 
-  const totals = totalsFromOrder(order);
-
-  // Best-effort: SMS the shop + email the customer. Never blocks the order.
+  // Best-effort emails — never block the order.
   await notifyNewOrder({
-    orderId: order.id,
+    orderId: shortId,
     method: fulfillment.method,
     customerName: customer.name,
     customerEmail: customer.email || undefined,
     customerPhone: customer.phone || undefined,
     address: fulfillment.method === "delivery" ? fulfillment.address : undefined,
     note: customer.note || undefined,
-    lines: (order.lineItems ?? []).map((li) => ({
-      name: li.name ?? "Item",
-      qty: Number(li.quantity ?? "1"),
-      totalCents: Number(li.totalMoney?.amount ?? 0n),
+    lines: items.map((it) => ({
+      name: `${it.productName} (${it.variationName})`,
+      qty: it.qty,
+      totalCents: it.lineTotalCents,
     })),
     ...totals,
   }).catch(() => {});
 
   return {
-    orderId: order.id,
-    paymentId: payment.payment?.id,
+    orderId: shortId,
+    paymentId: sqPaymentId,
     method: fulfillment.method,
     ...totals,
   };

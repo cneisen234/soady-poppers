@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listCatalog } from "@/lib/catalog";
-import { orderingStatus } from "@/lib/ordering";
+import { getSettings } from "@/lib/settings";
 import { getOpenStatus } from "@/lib/status";
 import Storefront from "@/components/order/Storefront";
 
@@ -15,8 +15,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function OrderPage() {
-  const status = orderingStatus();
-  const open = getOpenStatus(new Date());
+  const settings = await getSettings();
+  const open = getOpenStatus(new Date(), settings.hours);
 
   // Outside business hours we still take orders — just set expectations.
   const closedNote = open.open
@@ -73,8 +73,8 @@ export default async function OrderPage() {
 
       <Storefront
         catalog={catalog}
-        ordering={status.acceptingOrders}
-        pausedMessage={status.message}
+        ordering={settings.acceptingOrders}
+        pausedMessage={settings.pausedMessage ?? undefined}
         closedNote={closedNote}
       />
     </>

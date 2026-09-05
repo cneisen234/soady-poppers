@@ -5,6 +5,8 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import OrderBar from "@/components/OrderBar";
+import HideOnAdmin from "@/components/HideOnAdmin";
+import { getSettings } from "@/lib/settings";
 
 // reCAPTCHA v3 is behavioral — loading it site-wide lets Google build a risk
 // profile across the whole visit. The token is executed + verified only on the
@@ -62,18 +64,26 @@ export const viewport: Viewport = {
   themeColor: "#F0799F",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { hours } = await getSettings();
   return (
     <html
       lang="en"
       className={`${pacifico.variable} ${fredoka.variable} ${nunito.variable} ${bangers.variable} ${permanentMarker.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Navigation />
+        {/* Storefront chrome — hidden on the internal /admin console. */}
+        <HideOnAdmin>
+          <Navigation hours={hours} />
+        </HideOnAdmin>
         <main className="flex-1">{children}</main>
-        <Footer />
+        <HideOnAdmin>
+          <Footer hours={hours} />
+        </HideOnAdmin>
         {/* Mobile-only floating "Order Online" bar (hidden on the order flow) */}
-        <OrderBar />
+        <HideOnAdmin>
+          <OrderBar />
+        </HideOnAdmin>
         {RECAPTCHA_SITE_KEY && (
           <Script
             src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}

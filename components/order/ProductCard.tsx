@@ -8,21 +8,36 @@ import { useCart } from "./CartProvider";
 // selector when there's more than one variation, price, and add-to-cart.
 // Sold-out state is driven by the `available` flags from Square (Step 2).
 
-function Placeholder({ name }: { name: string }) {
-  // No photo yet — a soft branded tile with the drink's initial.
+function Placeholder() {
+  // No photo yet — a soft branded tile with a soda-cup icon.
   return (
     <div
-      className="flex items-center justify-center h-40 w-full"
+      className="flex items-center justify-center h-48 w-full"
       style={{
         background: "linear-gradient(135deg, var(--pink-soft), var(--lemon-soft))",
       }}
     >
-      <span
-        className="font-script text-5xl"
-        style={{ color: "var(--magenta)", opacity: 0.55 }}
+      <svg
+        width="76"
+        height="76"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--magenta)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ opacity: 0.5 }}
+        aria-hidden
       >
-        {name.charAt(0)}
-      </span>
+        {/* lid */}
+        <rect x="4.8" y="6" width="14.4" height="2.6" rx="1.1" />
+        {/* straw */}
+        <path d="M14.6 6 L16.2 2.4" />
+        {/* cup */}
+        <path d="M6.8 8.6 L8.6 21 h6.8 L17.2 8.6 Z" />
+        {/* soda line */}
+        <path d="M7.6 12.4 H16.4" />
+      </svg>
     </div>
   );
 }
@@ -67,14 +82,19 @@ export default function ProductCard({
     >
       <div className="relative">
         {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- remote Square CDN, avoids next/image remote config
+          // eslint-disable-next-line @next/next/no-img-element -- remote CDN, avoids next/image remote config
           <img
             src={product.imageUrl}
             alt={product.name}
-            className="h-40 w-full object-cover"
+            // Contain (never crop) on the same branded gradient as the placeholder,
+            // so any photo — portrait or landscape — shows in full.
+            className="h-48 w-full object-contain p-2"
+            style={{
+              background: "linear-gradient(135deg, var(--pink-soft), var(--lemon-soft))",
+            }}
           />
         ) : (
-          <Placeholder name={product.name} />
+          <Placeholder />
         )}
         {soldOut && (
           <span

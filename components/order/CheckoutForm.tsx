@@ -169,7 +169,7 @@ export default function CheckoutForm({
   locationId: string;
   squareEnv: string;
 }) {
-  const { items, subtotalCents, clear } = useCart();
+  const { items, subtotalCents, clear, remove } = useCart();
   const lines = useMemo(
     () => items.map((i) => ({ variationId: i.variationId, qty: i.qty })),
     [items],
@@ -193,6 +193,10 @@ export default function CheckoutForm({
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [addr, setAddr] = useState<Address>(EMPTY_ADDRESS);
+  // Variation ids that sold out at checkout — drives the sold-out modal.
+  const [soldOut, setSoldOut] = useState<string[] | null>(null);
+  // Set when ordering was paused at checkout — drives the paused modal.
+  const [paused, setPaused] = useState<string | null>(null);
 
   // Load the Square SDK and mount the card field once.
   useEffect(() => {
@@ -294,6 +298,18 @@ export default function CheckoutForm({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
+        // Ordering was paused — nothing was charged. Show the modal (cart clears on dismiss).
+        if (res.status === 409 && data.paused) {
+          setPaused(data.message || "Online ordering is temporarily unavailable, check back soon!");
+          setSubmitting(false);
+          return;
+        }
+        // Sold out between cart and charge — nothing was charged. Show the modal.
+        if (res.status === 409 && Array.isArray(data.soldOut) && data.soldOut.length > 0) {
+          setSoldOut(data.soldOut as string[]);
+          setSubmitting(false);
+          return;
+        }
         setError(data.message ?? "Payment could not be processed.");
         setSubmitting(false);
         return;
@@ -382,8 +398,97 @@ export default function CheckoutForm({
   const feeCents =
     totals?.feeCents ?? (method === "delivery" ? deliveryFeeCents(itemCount) : 0);
 
+  const soldOutItems = soldOut
+    ? items.filter((i) => soldOut.includes(i.variationId))
+    : [];
+  function dismissSoldOut() {
+    soldOut?.forEach((id) => remove(id));
+    setSoldOut(null);
+  }
+  function dismissPaused() {
+    clear();
+    window.location.href = "/order";
+  }
+
   return (
     <div className="container mx-auto px-4 py-10 grid lg:grid-cols-2 gap-10 max-w-5xl">
+      {/* Paused modal — nothing was charged; dismissing clears the cart. */}
+      {paused && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ordering paused"
+          onClick={dismissPaused}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(43,38,48,0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card-pop"
+            style={{ maxWidth: 440, width: "100%", padding: "24px", background: "var(--paper)" }}
+          >
+            <h3 className="text-2xl mb-2">Ordering is paused</h3>
+            <p style={{ color: "var(--ash)", marginBottom: 20 }}>{paused}</p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn-pop" onClick={dismissPaused}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sold-out modal — nothing was charged; dismissing removes the items. */}
+      {soldOut && soldOutItems.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Item sold out"
+          onClick={dismissSoldOut}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(43,38,48,0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card-pop"
+            style={{ maxWidth: 440, width: "100%", padding: "24px", background: "var(--paper)" }}
+          >
+            <h3 className="text-2xl mb-2">Just sold out</h3>
+            <p style={{ color: "var(--ash)", marginBottom: 12 }}>
+              Sorry — {soldOutItems.length === 1 ? "this drink" : "these drinks"} sold out
+              before your order went through, so you weren’t charged.{" "}
+              {soldOutItems.length === 1 ? "It’s" : "They’re"} been removed from your cart:
+            </p>
+            <ul style={{ margin: "0 0 20px", paddingLeft: 18 }}>
+              {soldOutItems.map((i) => (
+                <li key={i.variationId} style={{ fontWeight: 600, color: "var(--charcoal)" }}>
+                  {i.productName} · {i.variationName}
+                </li>
+              ))}
+            </ul>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn-pop" onClick={dismissSoldOut}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Left: fulfillment + customer + payment */}
       <div>
         <h1 className="text-3xl md:text-4xl mb-6">Checkout</h1>

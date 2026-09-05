@@ -76,8 +76,11 @@ export async function listCatalog(): Promise<Catalog> {
       categoryId: p.categoryId ?? undefined,
       categoryName: p.category?.name ?? undefined,
       imageUrl: p.images[0]?.url ?? undefined,
-      // Paused items, and items whose every size is unavailable, read as sold out.
-      available: p.available && variations.some((v) => v.available),
+      // Sold out when: paused, out of stock (if tracked), or every size unavailable.
+      available:
+        p.available &&
+        (!p.trackInventory || p.stock > 0) &&
+        variations.some((v) => v.available),
       variations,
     };
   });

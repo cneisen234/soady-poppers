@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { shop } from '@/lib/shop';
 import OpenStatus from './OpenStatus';
+import type { WeekHours } from '@/lib/status';
 
 const links = [
   { href: '/', label: 'Home' },
@@ -16,7 +17,7 @@ const links = [
   { href: '/visit', label: 'Visit' },
 ];
 
-export default function Navigation() {
+export default function Navigation({ hours }: { hours?: WeekHours }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -100,7 +101,7 @@ export default function Navigation() {
             {/* Right side: open-status + phone (secondary) + Order CTA (primary) */}
             <div className="hidden md:flex items-center gap-4">
               <div className="flex flex-col items-end leading-tight">
-                <OpenStatus />
+                <OpenStatus hours={hours} />
                 <a
                   href={shop.phoneHref}
                   className="text-xs font-semibold hover:underline"
@@ -116,7 +117,7 @@ export default function Navigation() {
 
             {/* Open status + hamburger — mobile only */}
             <div className="md:hidden flex items-center gap-2.5">
-              <OpenStatus compact />
+              <OpenStatus compact hours={hours} />
               <button
                 className="relative w-10 h-10 flex items-center justify-center rounded-full transition-colors"
                 style={{ backgroundColor: isOpen ? 'var(--magenta)' : 'rgba(240, 121, 159, 0.14)' }}

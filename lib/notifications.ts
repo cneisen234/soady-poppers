@@ -199,3 +199,47 @@ export async function notifyNewOrder(n: OrderNotice): Promise<void> {
     if (r.status === "rejected") console.error("[notify] notification error:", r.reason);
   }
 }
+
+// ---- Status update (ready for pickup / out for delivery) ----
+
+/** Email the customer when their order becomes ready or goes out for delivery. */
+export async function notifyOrderStatus(o: {
+  shortId: string;
+  customerName: string;
+  customerEmail?: string;
+  status: "ready" | "out_for_delivery";
+}): Promise<void> {
+  if (!o.customerEmail) return;
+  const ready = o.status === "ready";
+  const subject = ready
+    ? `Your Soady Poppers order is ready for pickup 🥤 (#${shortId(o.shortId)})`
+    : `Your Soady Poppers order is out for delivery 🥤 (#${shortId(o.shortId)})`;
+  const headline = ready ? "Ready for Pickup" : "Out for Delivery";
+  const line = ready
+    ? "Your order is ready — come grab it at the counter!"
+    : "Your order is on its way to you!";
+
+  const text = `Hi ${o.customerName},
+
+${line}
+
+Order #${shortId(o.shortId)}
+
+Thanks for supporting Soady Poppers!`;
+
+  const html = emailShell(
+    headline,
+    `<p style="margin:0 0 4px;color:#2B2630;font-size:16px;">Hi ${o.customerName}! 🥤</p>
+     <p style="margin:0 0 14px;color:#2B2630;font-size:15px;">${line}</p>
+     <p style="margin:0;color:#5B5560;font-size:14px;">Order <strong>#${shortId(o.shortId)}</strong></p>`,
+  );
+
+  const replyTo = process.env.CUSTOMER_REPLY_TO_EMAIL;
+  await sendEmail({
+    to: o.customerEmail,
+    subject,
+    text,
+    html,
+    replyTo: replyTo ? { email: replyTo, name: "Soady Poppers" } : undefined,
+  });
+}

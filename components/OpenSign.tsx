@@ -1,20 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getOpenStatus, type OpenState } from '@/lib/status';
+import { getOpenStatus, type OpenState, type WeekHours } from '@/lib/status';
 
 // A decorative "hanging shop sign" that flips OPEN / CLOSED live from the hours
 // table. Sticker-style to match the rest of the site: chunky charcoal outline,
 // hard offset shadow, script + Fredoka type. Meant to be overlaid on a photo.
-export default function OpenSign({ className = '' }: { className?: string }) {
+export default function OpenSign({
+  className = '',
+  hours,
+}: {
+  className?: string;
+  hours?: WeekHours;
+}) {
   const [status, setStatus] = useState<OpenState | null>(null);
 
   useEffect(() => {
-    const update = () => setStatus(getOpenStatus(new Date()));
+    const update = () => setStatus(getOpenStatus(new Date(), hours));
     update();
     const id = setInterval(update, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [hours]);
 
   const hydrated = status !== null;
   const open = status?.open ?? false;

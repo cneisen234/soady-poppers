@@ -1,26 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getOpenStatus, type OpenState } from '@/lib/status';
+import { getOpenStatus, type OpenState, type WeekHours } from '@/lib/status';
 
 type Props = {
   /** compact = just the dot + Open/Closed (for the tight mobile bar) */
   compact?: boolean;
   className?: string;
+  hours?: WeekHours;
 };
 
 // Branded open/closed pill. Green when open, pink when closed, with a live
 // pulsing dot. Renders a neutral placeholder on the server, then hydrates with
 // the real value to avoid a clock-driven hydration mismatch.
-export default function OpenStatus({ compact = false, className = '' }: Props) {
+export default function OpenStatus({ compact = false, className = '', hours }: Props) {
   const [status, setStatus] = useState<OpenState | null>(null);
 
   useEffect(() => {
-    const update = () => setStatus(getOpenStatus(new Date()));
+    const update = () => setStatus(getOpenStatus(new Date(), hours));
     update();
     const id = setInterval(update, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [hours]);
 
   const open = status?.open ?? false;
   const hydrated = status !== null;

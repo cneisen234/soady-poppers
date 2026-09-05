@@ -6,6 +6,7 @@ import {
   validateLines,
   validateFulfillment,
   placeOrder,
+  SoldOutError,
   type CheckoutLine,
   type Customer,
   type Fulfillment,
@@ -67,11 +68,17 @@ export async function POST(request: Request) {
     );
   }
 
-  // Re-validate against live catalog + kill switch before charging.
+  // Re-validate against the DB (availability, kill switch, inventory) first.
   const validation = await validateLines(lines);
   if (!validation.ok) {
     return Response.json(
-      { ok: false, message: validation.problems.join(" "), problems: validation.problems },
+      {
+        ok: false,
+        message: validation.problems.join(" "),
+        problems: validation.problems,
+        soldOut: validation.soldOut,
+        paused: validation.paused ?? false,
+      },
       { status: 409 },
     );
   }
@@ -80,13 +87,24 @@ export async function POST(request: Request) {
     const result = await placeOrder(lines, customer, sourceId, fulfillment);
     return Response.json({ ok: true, ...result });
   } catch (err) {
+    // Inventory changed between cart and charge — nothing was charged.
+    if (err instanceof SoldOutError) {
+      return Response.json(
+        {
+          ok: false,
+          message: err.message,
+          problems: err.problems,
+          soldOut: err.soldOut,
+          paused: err.paused,
+        },
+        { status: 409 },
+      );
+    }
     return Response.json(
       {
         ok: false,
         message:
-          err instanceof Error
-            ? err.message
-            : "Payment could not be processed.",
+          err instanceof Error ? err.message : "Payment could not be processed.",
       },
       { status: 402 },
     );

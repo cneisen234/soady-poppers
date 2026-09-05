@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CartProvider } from "./CartProvider";
 import ProductCard from "./ProductCard";
@@ -102,17 +103,39 @@ export default function Storefront({
     boxShadow: "2px 2px 0 var(--charcoal)",
   };
 
+  // Store paused — replace the whole storefront with a branded notice.
+  if (!ordering) {
+    const message =
+      pausedMessage || "Online ordering is temporarily unavailable, check back soon!";
+    return (
+      <div className="container mx-auto px-4 py-20">
+        <div
+          className="max-w-lg mx-auto text-center card-pop p-8 md:p-10"
+          style={{ background: "var(--paper)" }}
+        >
+          <div className="text-5xl mb-2" aria-hidden>
+            🥤
+          </div>
+          <h2 className="text-2xl md:text-3xl mb-3">Ordering is paused</h2>
+          <p className="text-lg" style={{ color: "var(--ash)" }}>
+            {message}
+          </p>
+          <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/menu" className="btn-outline">
+              Browse the menu
+            </Link>
+            <Link href="/visit" className="btn-pop">
+              Hours &amp; directions
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <CartProvider>
-      {/* Paused / closed banners */}
-      {!ordering && pausedMessage && (
-        <div
-          className="text-center px-4 py-3 text-sm font-semibold"
-          style={{ backgroundColor: "var(--charcoal)", color: "var(--bone)" }}
-        >
-          {pausedMessage}
-        </div>
-      )}
+      {/* Closed-but-still-taking-orders note */}
       {ordering && closedNote && (
         <div
           className="text-center px-4 py-2.5 text-sm"
