@@ -3,8 +3,8 @@
 // Conventions:
 //  - Money is always integer cents; tax rates are integer basis points (600 = 6%).
 //  - We manage the catalog ourselves — there is no Square id on catalog rows. The
-//    one-time import (scripts/seed.ts) wipes and reloads, so it needs no natural
-//    key. (payments.square_payment_id stays: Square still processes payments.)
+//    catalog import (scripts/import-menu.ts) wipes and reloads, so it needs no
+//    natural key. (payments.square_payment_id stays: Square still processes payments.)
 //  - Order rows SNAPSHOT names/prices/tax at purchase time, so editing an item or
 //    the tax rate later never rewrites a past receipt.
 

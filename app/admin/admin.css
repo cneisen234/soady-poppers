@@ -287,6 +287,16 @@
   font-size: 1.15rem;
   margin: 0 0 14px;
 }
+
+/* Auto-save status indicator */
+.admin-savestatus {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-savestatus.saving { color: var(--ash, #7a7a7a); }
+.admin-savestatus.saved { color: #256e3a; }
+.admin-savestatus.error { color: #b0433a; }
 .admin-card { margin-bottom: 20px; }
 
 /* Buttons */

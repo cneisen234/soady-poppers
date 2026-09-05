@@ -1,6 +1,8 @@
 // Full catalog import — WIPES and reloads the catalog from the real menu
-// (scripts/menu-data.ts). Orders, payments, and settings are untouched.
-// Run with `npm run db:menu`. For a non-destructive top-up, use restore-missing.
+// (scripts/menu-data.ts) and ensures the singleton settings row exists. Orders
+// and payments are untouched, and existing settings are preserved.
+// This is the production seed: run with `npm run db:menu`. For a non-destructive
+// top-up of the catalog, use restore-missing.
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -8,7 +10,7 @@ config({ path: ".env.local" });
 async function main() {
   const { MENU } = await import("./menu-data");
   const { db } = await import("@/lib/db");
-  const { categories, products, variations } = await import("@/lib/db/schema");
+  const { categories, products, variations, settings } = await import("@/lib/db/schema");
 
   let productCount = 0;
   let variationCount = 0;
@@ -48,6 +50,10 @@ async function main() {
         }
       }
     }
+
+    // Ensure the singleton settings row exists (defaults come from the schema).
+    // Preserves an existing row so saved tax/delivery/hours aren't reset.
+    await tx.insert(settings).values({ id: 1 }).onConflictDoNothing();
   });
 
   console.log(

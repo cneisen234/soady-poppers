@@ -3,12 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useCart } from "./CartProvider";
-import { formatCents } from "./format";
-import {
-  availableMethods,
-  deliveryFeeCents,
-  type FulfillmentMethod,
-} from "@/lib/fulfillment";
+import { formatCents } from "@/lib/money";
+import { availableMethods, type FulfillmentMethod } from "@/lib/fulfillment";
 
 // Square Web Payments SDK — loaded from their CDN, tokenizes the card inside a
 // Square-hosted iframe so raw card data never touches our server.
@@ -265,6 +261,10 @@ export default function CheckoutForm({
       setError("Please enter your name.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Please enter a valid email so we can send order updates.");
+      return;
+    }
     if (method === "delivery" && (!addr.line1.trim() || !addr.city.trim() || !addr.state.trim() || !addr.zip.trim())) {
       setError("Please enter your full delivery address.");
       return;
@@ -393,10 +393,6 @@ export default function CheckoutForm({
       </div>
     );
   }
-
-  const itemCount = items.reduce((n, i) => n + i.qty, 0);
-  const feeCents =
-    totals?.feeCents ?? (method === "delivery" ? deliveryFeeCents(itemCount) : 0);
 
   const soldOutItems = soldOut
     ? items.filter((i) => soldOut.includes(i.variationId))
@@ -535,7 +531,8 @@ export default function CheckoutForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
-            placeholder="Email (for your receipt)"
+            required
+            placeholder="Email (for receipt & order updates) *"
             aria-label="Email"
             className="w-full rounded-xl px-4 py-2.5 outline-none"
             style={inputStyle}
@@ -673,7 +670,7 @@ export default function CheckoutForm({
           <div className="space-y-1.5 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
             <Row label="Subtotal" value={formatCents(totals?.subtotalCents ?? subtotalCents)} />
             {method === "delivery" && (
-              <Row label="Local delivery" value={formatCents(feeCents)} />
+              <Row label="Local delivery" value={totals ? formatCents(totals.feeCents) : "—"} />
             )}
             <Row label="Tax" value={totals ? formatCents(totals.taxCents) : "—"} muted />
             <div

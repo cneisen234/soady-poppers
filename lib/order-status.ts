@@ -13,10 +13,6 @@ export type OrderStatus =
 export const ACTIVE_STATUSES = ["new", "preparing", "ready", "out_for_delivery"] as const;
 export const COMPLETED_STATUSES = ["completed", "cancelled", "refunded"] as const;
 
-export function isCompleted(s: string): boolean {
-  return (COMPLETED_STATUSES as readonly string[]).includes(s);
-}
-
 export function statusLabel(s: string): string {
   switch (s) {
     case "new":
@@ -60,16 +56,9 @@ export type Step = { status: OrderStatus; label: string };
 
 /** The forward step sequence for an order's fulfillment method. */
 export function stepsForMethod(method: string): Step[] {
-  if (method === "delivery") {
-    return [
-      { status: "new", label: "New" },
-      { status: "out_for_delivery", label: "Out for Delivery" },
-      { status: "completed", label: "Done" },
-    ];
-  }
-  return [
-    { status: "new", label: "New" },
-    { status: "ready", label: "Ready for Pickup" },
-    { status: "completed", label: "Done" },
-  ];
+  const statuses: OrderStatus[] =
+    method === "delivery"
+      ? ["new", "out_for_delivery", "completed"]
+      : ["new", "ready", "completed"];
+  return statuses.map((status) => ({ status, label: statusLabel(status) }));
 }

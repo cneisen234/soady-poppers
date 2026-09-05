@@ -2,9 +2,8 @@ import Link from "next/link";
 import { asc, count } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, products } from "@/lib/db/schema";
-import { createCategory, renameCategory, deleteCategory } from "../actions";
-import ConfirmDelete from "../../confirm-delete";
-import { FloppyIcon, TrashIcon } from "../../icons";
+import { createCategory } from "../actions";
+import CategoryRow from "./category-row";
 
 export const dynamic = "force-dynamic";
 
@@ -31,37 +30,14 @@ export default async function CategoriesPage() {
       </p>
 
       <div className="admin-card">
-        {cats.map((c) => {
-          const n = countByCat.get(c.id) ?? 0;
-          return (
-            <div className="admin-list-row" key={c.id}>
-              <form action={renameCategory} id={`cat-${c.id}`} className="admin-list-main">
-                <input type="hidden" name="id" value={c.id} />
-                <input name="name" defaultValue={c.name} className="admin-input" aria-label="Category name" />
-              </form>
-              <span className="admin-list-count">
-                {n} {n === 1 ? "item" : "items"}
-              </span>
-              <button
-                type="submit"
-                form={`cat-${c.id}`}
-                className="admin-btn sm ghost"
-                aria-label="Save"
-                title="Save"
-              >
-                <FloppyIcon />
-              </button>
-              <ConfirmDelete
-                action={deleteCategory}
-                fields={{ id: c.id }}
-                title={`Delete “${c.name}”?`}
-                message="Items in this category become uncategorized — they are not deleted."
-                triggerLabel={<TrashIcon />}
-                triggerAriaLabel="Delete category"
-              />
-            </div>
-          );
-        })}
+        {cats.map((c) => (
+          <CategoryRow
+            key={c.id}
+            id={c.id}
+            name={c.name}
+            itemCount={countByCat.get(c.id) ?? 0}
+          />
+        ))}
         {cats.length === 0 && (
           <p className="admin-stub" style={{ margin: "6px 0" }}>
             No categories yet.

@@ -42,6 +42,14 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  // Email is required — order confirmation + status updates all go to it.
+  const email = customer.email?.trim() ?? "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json(
+      { ok: false, message: "Please enter a valid email address." },
+      { status: 400 },
+    );
+  }
   if (!sourceId) {
     return Response.json(
       { ok: false, message: "Missing payment details." },

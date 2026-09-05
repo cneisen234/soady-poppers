@@ -7,28 +7,20 @@ import { UTApi } from "uploadthing/server";
 import { db } from "@/lib/db";
 import { products, variations, productImages, categories } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/dal";
+import { dollarsToCents } from "@/lib/money";
+import { field, bool } from "@/lib/form";
 import { flashToast } from "../flash";
 
 const utapi = new UTApi();
 
 // ---- helpers ----
 
-function str(form: FormData, key: string): string {
-  return String(form.get(key) ?? "").trim();
-}
-function checked(form: FormData, key: string): boolean {
-  return form.get(key) != null;
-}
-function toCents(dollars: string): number {
-  const n = Number.parseFloat(dollars);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : 0;
-}
 // null = inherit global rate, 0 = exempt, else custom rate in basis points.
 function taxBps(form: FormData): number | null {
-  const mode = str(form, "taxMode") || "inherit";
+  const mode = field(form, "taxMode") || "inherit";
   if (mode === "inherit") return null;
   if (mode === "exempt") return 0;
-  const pct = Number.parseFloat(str(form, "taxRatePercent"));
+  const pct = Number.parseFloat(field(form, "taxRatePercent"));
   return Number.isFinite(pct) && pct >= 0 ? Math.round(pct * 100) : 0;
 }
 
@@ -36,8 +28,8 @@ function taxBps(form: FormData): number | null {
 
 export async function createProduct(form: FormData): Promise<void> {
   await requireAdmin();
-  const name = str(form, "name") || "Untitled item";
-  const categoryId = str(form, "categoryId") || null;
+  const name = field(form, "name") || "Untitled item";
+  const categoryId = field(form, "categoryId") || null;
   const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(products);
   const [row] = await db
     .insert(products)
@@ -49,30 +41,30 @@ export async function createProduct(form: FormData): Promise<void> {
 
 export async function updateProduct(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
+  const id = field(form, "id");
   if (!id) return;
   await db
     .update(products)
     .set({
-      name: str(form, "name") || "Untitled item",
-      description: str(form, "description") || null,
-      categoryId: str(form, "categoryId") || null,
-      available: checked(form, "available"),
-      hidden: !checked(form, "visible"),
+      name: field(form, "name") || "Untitled item",
+      description: field(form, "description") || null,
+      categoryId: field(form, "categoryId") || null,
+      available: bool(form, "available"),
+      hidden: !bool(form, "visible"),
       taxRateBps: taxBps(form),
-      trackInventory: checked(form, "trackInventory"),
-      stock: Math.max(0, Number.parseInt(str(form, "stock"), 10) || 0),
+      trackInventory: bool(form, "trackInventory"),
+      stock: Math.max(0, Number.parseInt(field(form, "stock"), 10) || 0),
       updatedAt: new Date(),
     })
     .where(eq(products.id, id));
-  await flashToast("Item saved");
-  revalidatePath(`/admin/items/${id}`);
+  // Auto-saved from the editor — no toast, and don't refresh the current page
+  // (the client already holds the values). Just mark the list stale.
   revalidatePath("/admin/items");
 }
 
 export async function deleteProduct(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
+  const id = field(form, "id");
   if (!id) return;
   // Clean up any uploaded images from UploadThing (seeded Square images have no key).
   const imgs = await db
@@ -91,25 +83,26 @@ export async function deleteProduct(form: FormData): Promise<void> {
 
 export async function saveVariation(form: FormData): Promise<void> {
   await requireAdmin();
-  const productId = str(form, "productId");
+  const productId = field(form, "productId");
   if (!productId) return;
-  const id = str(form, "id");
+  const id = field(form, "id");
   const base = {
-    name: str(form, "name") || "Regular",
-    priceCents: toCents(str(form, "price")),
-    sku: str(form, "sku") || null,
+    name: field(form, "name") || "Regular",
+    priceCents: dollarsToCents(field(form, "price")),
+    sku: field(form, "sku") || null,
   };
   if (id) {
+    // Auto-saved edit of an existing size — no toast, no current-page refresh.
     await db
       .update(variations)
       .set({
         ...base,
-        available: checked(form, "available"),
-        soldOut: checked(form, "soldOut"),
+        available: bool(form, "available"),
+        soldOut: bool(form, "soldOut"),
         updatedAt: new Date(),
       })
       .where(eq(variations.id, id));
-    await flashToast("Size saved");
+    revalidatePath("/admin/items");
   } else {
     // New size appends after the existing ones and is available by default.
     const [{ c }] = await db
@@ -118,14 +111,15 @@ export async function saveVariation(form: FormData): Promise<void> {
       .where(eq(variations.productId, productId));
     await db.insert(variations).values({ ...base, productId, available: true, sort: c });
     await flashToast("Size added");
+    revalidatePath(`/admin/items/${productId}`);
+    revalidatePath("/admin/items");
   }
-  revalidatePath(`/admin/items/${productId}`);
 }
 
 export async function deleteVariation(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
-  const productId = str(form, "productId");
+  const id = field(form, "id");
+  const productId = field(form, "productId");
   if (!id) return;
   await db.delete(variations).where(eq(variations.id, id));
   await flashToast("Size deleted");
@@ -156,8 +150,8 @@ export async function addProductImage(input: {
 
 export async function deleteProductImage(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
-  const productId = str(form, "productId");
+  const id = field(form, "id");
+  const productId = field(form, "productId");
   if (!id) return;
   const [img] = await db
     .select({ utKey: productImages.utKey })
@@ -171,8 +165,8 @@ export async function deleteProductImage(form: FormData): Promise<void> {
 
 export async function makePrimaryImage(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
-  const productId = str(form, "productId");
+  const id = field(form, "id");
+  const productId = field(form, "productId");
   if (!id || !productId) return;
   // Lowest sort wins (storefront uses images[0]); put this one below the current min.
   const [{ min }] = await db
@@ -188,7 +182,7 @@ export async function makePrimaryImage(form: FormData): Promise<void> {
 
 export async function createCategory(form: FormData): Promise<void> {
   await requireAdmin();
-  const name = str(form, "name");
+  const name = field(form, "name");
   if (!name) return;
   const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(categories);
   await db.insert(categories).values({ name, sort: c });
@@ -199,21 +193,21 @@ export async function createCategory(form: FormData): Promise<void> {
 
 export async function renameCategory(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
-  const name = str(form, "name");
+  const id = field(form, "id");
+  const name = field(form, "name");
   if (!id || !name) return;
   await db
     .update(categories)
     .set({ name, updatedAt: new Date() })
     .where(eq(categories.id, id));
-  await flashToast("Category saved");
-  revalidatePath("/admin/items/categories");
+  // Auto-saved rename — no toast, no current-page refresh. Keep the item list
+  // fresh since it shows category names.
   revalidatePath("/admin/items");
 }
 
 export async function deleteCategory(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = str(form, "id");
+  const id = field(form, "id");
   if (!id) return;
   await db.delete(categories).where(eq(categories.id, id)); // products.category_id -> null
   await flashToast("Category deleted");

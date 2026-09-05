@@ -8,20 +8,21 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { square, locationId } from "@/lib/square";
 import { db } from "@/lib/db";
-import { products, variations, orders, orderItems, payments } from "@/lib/db/schema";
+import {
+  products,
+  variations,
+  orders,
+  orderItems,
+  payments,
+  type DeliveryAddress,
+} from "@/lib/db/schema";
 import { getSettings, deliveryFeeCents, type Settings } from "@/lib/settings";
 import { notifyNewOrder } from "@/lib/notifications";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
 
+export type { DeliveryAddress };
 export type CheckoutLine = { variationId: string; qty: number };
 export type Customer = { name: string; email?: string; phone?: string; note?: string };
-export type DeliveryAddress = {
-  line1: string;
-  line2?: string;
-  city: string;
-  state: string;
-  zip: string;
-};
 export type Fulfillment = { method: FulfillmentMethod; address?: DeliveryAddress };
 
 export type OrderTotals = {
@@ -328,7 +329,7 @@ export async function placeOrder(
 
   // Best-effort emails — never block the order.
   await notifyNewOrder({
-    orderId: shortId,
+    shortId,
     method: fulfillment.method,
     customerName: customer.name,
     customerEmail: customer.email || undefined,

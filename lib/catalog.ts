@@ -1,12 +1,12 @@
-// Read path for the storefront catalog — now sourced from OUR Postgres database.
+// Read path for the storefront catalog — sourced from OUR Postgres database.
 //
-// Returns the same flat Catalog shape the storefront and checkout already consume,
-// so components downstream don't change. The Square reader lives in
-// lib/square-catalog.ts now and is used only by the one-time import (seed).
+// Returns a flat Catalog shape the storefront and checkout consume. The catalog
+// is loaded from scripts/menu-data.ts via `npm run db:menu` (scripts/import-menu).
 //
 // Server-only (imports lib/db).
 
 import { db } from "@/lib/db";
+import { formatCents } from "@/lib/money";
 
 export type ProductVariation = {
   id: string;
@@ -33,10 +33,6 @@ export type Catalog = {
   categories: { id: string; name: string }[];
   products: Product[];
 };
-
-function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 /**
  * Fetch the storefront catalog from Postgres, normalized into the flat shape the
@@ -65,7 +61,7 @@ export async function listCatalog(): Promise<Catalog> {
       id: v.id,
       name: v.name,
       priceCents: v.priceCents,
-      priceLabel: money(v.priceCents),
+      priceLabel: formatCents(v.priceCents),
       available: v.available && !v.soldOut,
     }));
 

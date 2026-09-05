@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { statusLabel, statusTagClass } from "@/lib/order-status";
+import { formatCents } from "@/lib/money";
+import { formatOrderTime } from "@/lib/datetime";
 
 type Row = {
   id: string;
@@ -15,18 +17,6 @@ type Row = {
 };
 
 type Scope = "active" | "completed";
-
-function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-function when(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export default function OrdersBrowser() {
   const [tab, setTab] = useState<Scope>("active");
@@ -150,13 +140,13 @@ export default function OrdersBrowser() {
                     #{o.shortId}
                   </Link>
                 </td>
-                <td data-label="Placed">{when(o.createdAt)}</td>
+                <td data-label="Placed">{formatOrderTime(o.createdAt)}</td>
                 <td data-label="Customer">{o.customerName}</td>
                 <td data-label="Method" style={{ textTransform: "capitalize" }}>
                   {o.method}
                 </td>
                 <td className="admin-num" data-label="Total">
-                  {money(o.totalCents)}
+                  {formatCents(o.totalCents)}
                 </td>
                 <td data-label="Status">
                   <span className={`admin-tag ${statusTagClass(o.status)}`}>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "./CartProvider";
-import { formatCents } from "./format";
+import { formatCents } from "@/lib/money";
 
 // Floating cart button + slide-over drawer. Checkout routes to /order/checkout,
 // which is built in Step 4 (a stub for now so the flow is navigable).

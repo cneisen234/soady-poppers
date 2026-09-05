@@ -3,23 +3,13 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { refundOrder } from "../actions";
 import { statusLabel, statusTagClass } from "@/lib/order-status";
+import { formatCents } from "@/lib/money";
+import { formatOrderTime } from "@/lib/datetime";
+import { formatAddress } from "@/lib/address";
 import StatusStepper from "./status-stepper";
 import ConfirmDelete from "../../confirm-delete";
 
 export const dynamic = "force-dynamic";
-
-function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-function when(d: Date): string {
-  return new Date(d).toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export default async function OrderDetailPage({
   params,
@@ -51,7 +41,8 @@ export default async function OrderDetailPage({
         </span>
       </div>
       <p className="admin-sub" style={{ marginTop: 8 }}>
-        {when(order.createdAt)} · <span style={{ textTransform: "capitalize" }}>{order.method}</span>
+        {formatOrderTime(order.createdAt, { weekday: true })} ·{" "}
+        <span style={{ textTransform: "capitalize" }}>{order.method}</span>
       </p>
 
       {/* Status stepper + refund */}
@@ -64,7 +55,7 @@ export default async function OrderDetailPage({
               action={refundOrder}
               fields={{ id: order.id }}
               title={`Refund order #${order.shortId}?`}
-              message={`This refunds ${money(order.totalCents)} to the customer's card and marks the order refunded.`}
+              message={`This refunds ${formatCents(order.totalCents)} to the customer's card and marks the order refunded.`}
               triggerClass="admin-btn sm danger"
               triggerLabel="Refund order"
               triggerAriaLabel="Refund order"
@@ -109,10 +100,7 @@ export default async function OrderDetailPage({
           {order.method === "delivery" && addr && (
             <li>
               <span className="k">Deliver to</span>
-              <span className="v">
-                {addr.line1}
-                {addr.line2 ? `, ${addr.line2}` : ""}, {addr.city}, {addr.state} {addr.zip}
-              </span>
+              <span className="v">{formatAddress(addr)}</span>
             </li>
           )}
           {order.note && (
@@ -147,10 +135,10 @@ export default async function OrderDetailPage({
                     {it.qty}
                   </td>
                   <td className="admin-num" data-label="Each">
-                    {money(it.unitPriceCents)}
+                    {formatCents(it.unitPriceCents)}
                   </td>
                   <td className="admin-num" data-label="Total">
-                    {money(it.lineTotalCents)}
+                    {formatCents(it.lineTotalCents)}
                   </td>
                 </tr>
               ))}
@@ -161,22 +149,22 @@ export default async function OrderDetailPage({
         <ul className="kv admin-kv" style={{ marginTop: 16 }}>
           <li>
             <span className="k">Subtotal</span>
-            <span className="v admin-num">{money(order.subtotalCents)}</span>
+            <span className="v admin-num">{formatCents(order.subtotalCents)}</span>
           </li>
           {order.feeCents > 0 && (
             <li>
               <span className="k">Delivery</span>
-              <span className="v admin-num">{money(order.feeCents)}</span>
+              <span className="v admin-num">{formatCents(order.feeCents)}</span>
             </li>
           )}
           <li>
             <span className="k">Tax</span>
-            <span className="v admin-num">{money(order.taxCents)}</span>
+            <span className="v admin-num">{formatCents(order.taxCents)}</span>
           </li>
           <li>
             <span className="k" style={{ fontWeight: 700 }}>Total</span>
             <span className="v admin-num" style={{ fontWeight: 700 }}>
-              {money(order.totalCents)}
+              {formatCents(order.totalCents)}
             </span>
           </li>
           {payment && (

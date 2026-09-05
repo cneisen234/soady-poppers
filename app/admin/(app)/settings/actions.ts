@@ -5,13 +5,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/dal";
-import { flashToast } from "../flash";
+import { dollarsToCents } from "@/lib/money";
+import { field, bool } from "@/lib/form";
 import type { WeekHours } from "@/lib/status";
 
-function dollarsToCents(v: string): number {
-  const n = Number.parseFloat(v);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : 0;
-}
 function toInt(v: string, fallback: number): number {
   const n = Number.parseInt(v, 10);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
@@ -28,12 +25,12 @@ function parseHours(form: FormData): WeekHours {
   const out: WeekHours = {};
   for (let d = 0; d < 7; d++) {
     // Switch ON = open that day; off = closed.
-    if (form.get(`openDay_${d}`) == null) {
+    if (!bool(form, `openDay_${d}`)) {
       out[d] = null;
       continue;
     }
-    const open = timeToDecimal(String(form.get(`open_${d}`) ?? ""));
-    const close = timeToDecimal(String(form.get(`close_${d}`) ?? ""));
+    const open = timeToDecimal(field(form, `open_${d}`));
+    const close = timeToDecimal(field(form, `close_${d}`));
     out[d] = open != null && close != null && close > open ? { open, close } : null;
   }
   return out;
@@ -41,25 +38,24 @@ function parseHours(form: FormData): WeekHours {
 
 export async function updateSettings(form: FormData): Promise<void> {
   await requireAdmin();
-  const g = (k: string) => String(form.get(k) ?? "").trim();
-  const taxPct = Number.parseFloat(g("taxRatePercent"));
+  const taxPct = Number.parseFloat(field(form, "taxRatePercent"));
 
   await db
     .update(settings)
     .set({
-      acceptingOrders: form.get("acceptingOrders") != null,
-      pausedMessage: g("pausedMessage") || null,
+      acceptingOrders: bool(form, "acceptingOrders"),
+      pausedMessage: field(form, "pausedMessage") || null,
       taxRateBps: Number.isFinite(taxPct) && taxPct >= 0 ? Math.round(taxPct * 100) : 600,
-      deliveryPerItemCents: dollarsToCents(g("perItem")),
-      deliveryFlatCents: dollarsToCents(g("flat")),
-      deliveryFlatMinItems: toInt(g("flatMin"), 5),
-      deliveryFreeMinItems: toInt(g("freeMin"), 10),
+      deliveryPerItemCents: dollarsToCents(field(form, "perItem")),
+      deliveryFlatCents: dollarsToCents(field(form, "flat")),
+      deliveryFlatMinItems: toInt(field(form, "flatMin"), 5),
+      deliveryFreeMinItems: toInt(field(form, "freeMin"), 10),
       hours: parseHours(form),
       updatedAt: new Date(),
     })
     .where(eq(settings.id, 1));
 
-  await flashToast("Settings saved");
-  revalidatePath("/admin/settings");
+  // Auto-saved — no toast, and don't revalidate the current page (the client
+  // holds the live values). Refresh the storefront so pause/hours/fees apply.
   revalidatePath("/order");
 }

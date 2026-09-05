@@ -41,30 +41,7 @@ export const shop = {
     "https://www.google.com/maps?q=Soady+Poppers,+2051+E+Miller+Rd,+Fairview,+MI+48621&output=embed",
 } as const;
 
-// ---- Hours ----
-// 0 = Sunday … 6 = Saturday. open/close are 24h decimal hours in local time.
-// null = closed that day.
-export type DayHours = { open: number; close: number } | null;
-
-export const hours: Record<number, DayHours> = {
-  0: null, // Sun — closed
-  1: { open: 7, close: 17 }, // Mon
-  2: { open: 7, close: 17 }, // Tue
-  3: { open: 7, close: 17 }, // Wed
-  4: { open: 7, close: 17 }, // Thu
-  5: { open: 7, close: 20 }, // Fri
-  6: { open: 10, close: 20 }, // Sat
-};
-
-export const hoursDisplay: { label: string; value: string; closed?: boolean }[] = [
-  { label: "Monday", value: "7 AM – 5 PM" },
-  { label: "Tuesday", value: "7 AM – 5 PM" },
-  { label: "Wednesday", value: "7 AM – 5 PM" },
-  { label: "Thursday", value: "7 AM – 5 PM" },
-  { label: "Friday", value: "7 AM – 8 PM" },
-  { label: "Saturday", value: "10 AM – 8 PM" },
-  { label: "Sunday", value: "Closed", closed: true },
-];
+// Hours live in the DB now (settings.hours) — see lib/status.ts + lib/settings.ts.
 
 // ---- Menu ----
 export type Accent = "pink" | "teal" | "lemon" | "magenta" | "lime";
@@ -255,14 +232,6 @@ export const bigPoppa = {
       "The premium reserve. Loaded gourmet mixes — chocolate, nuts and caramel corn — hand-packed in fresh batches.",
   },
 };
-
-// Add-ons that apply across the board.
-export const addOns = [
-  "Coconut or Oat Milk",
-  "Sugar-Free options",
-  "Extra cold foam",
-  "20+ custom flavors",
-];
 
 // Order in which the menu sections appear + their nav rail labels.
 export const menuSections = [

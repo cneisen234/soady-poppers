@@ -3,18 +3,15 @@ import { db } from "@/lib/db";
 import { deleteProduct } from "./actions";
 import ConfirmDelete from "../confirm-delete";
 import { PenIcon, TrashIcon } from "../icons";
+import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
-
-function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 function priceLabel(prices: number[]): string {
   if (prices.length === 0) return "—";
   const min = Math.min(...prices);
   const max = Math.max(...prices);
-  return min === max ? money(min) : `${money(min)}–${money(max)}`;
+  return min === max ? formatCents(min) : `${formatCents(min)}–${formatCents(max)}`;
 }
 
 export default async function AdminItemsPage() {

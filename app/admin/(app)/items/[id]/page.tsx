@@ -3,16 +3,12 @@ import { notFound } from "next/navigation";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories } from "@/lib/db/schema";
-import { updateProduct, saveVariation, deleteVariation } from "../actions";
+import { saveVariation } from "../actions";
 import ImageManager from "./image-manager";
-import ConfirmDelete from "../../confirm-delete";
-import { FloppyIcon, TrashIcon } from "../../icons";
+import ProductDetailsForm from "./product-details-form";
+import VariationRow from "./variation-row";
 
 export const dynamic = "force-dynamic";
-
-function dollars(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
 
 export default async function EditItemPage({
   params,
@@ -34,9 +30,6 @@ export default async function EditItemPage({
 
   if (!product) notFound();
 
-  const taxMode =
-    product.taxRateBps == null ? "inherit" : product.taxRateBps === 0 ? "exempt" : "custom";
-
   return (
     <>
       <Link href="/admin/items" className="admin-link">
@@ -46,116 +39,23 @@ export default async function EditItemPage({
         {product.name}
       </h1>
 
-      {/* ---- Details ---- */}
-      <form action={updateProduct} className="admin-card admin-form">
-        <input type="hidden" name="id" value={product.id} />
-        <h2 className="admin-h2">Details</h2>
+      {/* ---- Details (auto-saves) ---- */}
+      <ProductDetailsForm
+        product={{
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          categoryId: product.categoryId,
+          available: product.available,
+          hidden: product.hidden,
+          taxRateBps: product.taxRateBps,
+          trackInventory: product.trackInventory,
+          stock: product.stock,
+        }}
+        categories={cats.map((c) => ({ id: c.id, name: c.name }))}
+      />
 
-        <label className="admin-field">
-          <span>Name</span>
-          <input name="name" required defaultValue={product.name} className="admin-input" />
-        </label>
-
-        <label className="admin-field">
-          <span>Description</span>
-          <textarea
-            name="description"
-            rows={2}
-            defaultValue={product.description ?? ""}
-            className="admin-input"
-          />
-        </label>
-
-        <label className="admin-field">
-          <span>Category</span>
-          <select
-            name="categoryId"
-            defaultValue={product.categoryId ?? ""}
-            className="admin-input"
-          >
-            <option value="">— None —</option>
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="admin-grid2">
-          <label className="admin-check">
-            <input type="checkbox" name="available" defaultChecked={product.available} />
-            <span>Available (turn off to pause this item)</span>
-          </label>
-          <label className="admin-check">
-            <input type="checkbox" name="visible" defaultChecked={!product.hidden} />
-            <span>Visible on storefront</span>
-          </label>
-        </div>
-
-        <fieldset className="admin-fieldset">
-          <legend>Tax</legend>
-          <div className="admin-grid2">
-            <label className="admin-field">
-              <span>Tax treatment</span>
-              <select name="taxMode" defaultValue={taxMode} className="admin-input">
-                <option value="inherit">Use global rate</option>
-                <option value="exempt">Tax exempt (0%)</option>
-                <option value="custom">Custom rate…</option>
-              </select>
-            </label>
-            <label className="admin-field">
-              <span>Custom rate (%) — only used for “Custom”</span>
-              <input
-                name="taxRatePercent"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={
-                  product.taxRateBps && product.taxRateBps > 0
-                    ? product.taxRateBps / 100
-                    : ""
-                }
-                className="admin-input"
-                placeholder="e.g. 6"
-              />
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset className="admin-fieldset">
-          <legend>Inventory</legend>
-          <div className="admin-grid2">
-            <label className="admin-check">
-              <input
-                type="checkbox"
-                name="trackInventory"
-                defaultChecked={product.trackInventory}
-              />
-              <span>Track inventory (sell out at 0)</span>
-            </label>
-            <label className="admin-field">
-              <span>Stock on hand — only used when tracking</span>
-              <input
-                name="stock"
-                type="number"
-                min="0"
-                step="1"
-                defaultValue={product.stock}
-                className="admin-input"
-              />
-            </label>
-          </div>
-        </fieldset>
-
-        <div className="admin-actions">
-          <button type="submit" className="admin-btn" aria-label="Save details" title="Save details">
-            <FloppyIcon />
-          </button>
-        </div>
-      </form>
-
-      {/* ---- Variations ---- */}
+      {/* ---- Variations (auto-save) ---- */}
       <div className="admin-card">
         <h2 className="admin-h2">Sizes &amp; prices</h2>
         <div className="admin-tablewrap">
@@ -172,74 +72,18 @@ export default async function EditItemPage({
             </thead>
             <tbody>
               {product.variations.map((v) => (
-                <tr key={v.id}>
-                  <td data-label="Name">
-                    <form
-                      action={saveVariation}
-                      id={`var-${v.id}`}
-                      className="admin-inline-form"
-                    >
-                      <input type="hidden" name="id" value={v.id} />
-                      <input type="hidden" name="productId" value={product.id} />
-                      <input name="name" defaultValue={v.name} className="admin-input sm" />
-                    </form>
-                  </td>
-                  <td className="admin-num" data-label="Price">
-                    <input
-                      form={`var-${v.id}`}
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      defaultValue={dollars(v.priceCents)}
-                      className="admin-input sm w-24"
-                    />
-                  </td>
-                  <td data-label="SKU">
-                    <input
-                      form={`var-${v.id}`}
-                      name="sku"
-                      defaultValue={v.sku ?? ""}
-                      className="admin-input sm"
-                    />
-                  </td>
-                  <td className="admin-center" data-label="Available">
-                    <input
-                      form={`var-${v.id}`}
-                      type="checkbox"
-                      name="available"
-                      defaultChecked={v.available}
-                    />
-                  </td>
-                  <td className="admin-center" data-label="Sold out">
-                    <input
-                      form={`var-${v.id}`}
-                      type="checkbox"
-                      name="soldOut"
-                      defaultChecked={v.soldOut}
-                    />
-                  </td>
-                  <td className="admin-num">
-                    <div className="admin-actions">
-                      <button
-                        type="submit"
-                        form={`var-${v.id}`}
-                        className="admin-btn sm ghost"
-                        aria-label="Save"
-                        title="Save"
-                      >
-                        <FloppyIcon />
-                      </button>
-                      <ConfirmDelete
-                        action={deleteVariation}
-                        fields={{ id: v.id, productId: product.id }}
-                        title={`Delete the “${v.name}” size?`}
-                        triggerLabel={<TrashIcon />}
-                        triggerAriaLabel="Delete size"
-                      />
-                    </div>
-                  </td>
-                </tr>
+                <VariationRow
+                  key={v.id}
+                  productId={product.id}
+                  v={{
+                    id: v.id,
+                    name: v.name,
+                    priceCents: v.priceCents,
+                    sku: v.sku,
+                    available: v.available,
+                    soldOut: v.soldOut,
+                  }}
+                />
               ))}
             </tbody>
           </table>

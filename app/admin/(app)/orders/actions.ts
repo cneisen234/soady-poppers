@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { square } from "@/lib/square";
 import { notifyOrderStatus } from "@/lib/notifications";
 import { flashToast } from "../flash";
+import { field } from "@/lib/form";
 import { stepsForMethod, statusLabel, type OrderStatus } from "@/lib/order-status";
 
 /**
@@ -49,7 +50,7 @@ export async function advanceOrderStatus(id: string, status: string): Promise<vo
 
 export async function refundOrder(form: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(form.get("id") ?? "");
+  const id = field(form, "id");
   if (!id) return;
 
   const [pay] = await db.select().from(payments).where(eq(payments.orderId, id));

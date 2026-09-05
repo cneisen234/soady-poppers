@@ -13,24 +13,9 @@ export type FulfillmentMethod = "pickup" | "delivery" | "shipping";
 export const DELIVERY_ENABLED = true;
 export const SHIPPING_ENABLED = false;
 
-// Per-item local-delivery fee, in cents. A business setting the owners choose —
-// applied as a Square service charge so it's part of the order total.
-export const DELIVERY_FEE_PER_ITEM_CENTS = 200;
-
-// Flat fee for mid-size orders, in cents (see deliveryFeeCents tiers).
-export const DELIVERY_FEE_FLAT_CENTS = 500;
-
-/**
- * Local-delivery fee for an order, by total item count:
- *   1–4 items:  $2 per item
- *   5–9 items:  flat $5
- *   10+ items:  free
- */
-export function deliveryFeeCents(itemCount: number): number {
-  if (itemCount >= 10) return 0;
-  if (itemCount >= 5) return DELIVERY_FEE_FLAT_CENTS;
-  return Math.max(0, itemCount) * DELIVERY_FEE_PER_ITEM_CENTS;
-}
+// The delivery fee itself is a store setting (tiers editable in the admin) and
+// lives in lib/settings.ts — deliveryFeeCents(count, settings). This module only
+// decides which fulfillment methods are offered.
 
 /** Methods offered to customers right now. */
 export function availableMethods(): FulfillmentMethod[] {
