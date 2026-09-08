@@ -490,6 +490,22 @@ textarea.admin-input { resize: vertical; }
 .admin-list-add .admin-input {
   flex: 1;
 }
+/* Keep a fixed-width field (e.g. the % rate) from stretching in the add row. */
+.admin-list-add .admin-input.w-24 {
+  flex: 0 0 auto;
+}
+
+/* Rate field with a % suffix (vendor discounts) */
+.admin-rate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.admin-rate-suffix {
+  color: var(--ash);
+  font-size: 0.9rem;
+}
 
 /* Confirm-delete modal */
 .admin-modal-backdrop {

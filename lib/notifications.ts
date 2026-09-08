@@ -21,6 +21,7 @@ export type OrderNotice = {
   note?: string;
   lines: { name: string; qty: number; totalCents: number }[];
   subtotalCents: number;
+  discountCents: number;
   taxCents: number;
   feeCents: number;
   totalCents: number;
@@ -78,12 +79,17 @@ function itemRowsHtml(n: OrderNotice): string {
     .join("");
 }
 function totalsRowsHtml(n: OrderNotice): string {
+  const discount =
+    n.discountCents > 0
+      ? `<tr><td style="padding:2px 0;color:#256E3A;">Vendor discount</td><td style="padding:2px 0;text-align:right;color:#256E3A;">-${formatCents(n.discountCents)}</td></tr>`
+      : "";
   const fee =
     n.feeCents > 0
       ? `<tr><td style="padding:2px 0;color:#5B5560;">Local delivery</td><td style="padding:2px 0;text-align:right;color:#5B5560;">${formatCents(n.feeCents)}</td></tr>`
       : "";
   return `<tr><td colspan="2" style="border-top:1px solid #EAE0C9;padding-top:8px;"></td></tr>
     <tr><td style="padding:2px 0;color:#5B5560;">Subtotal</td><td style="padding:2px 0;text-align:right;color:#5B5560;">${formatCents(n.subtotalCents)}</td></tr>
+    ${discount}
     ${fee}
     <tr><td style="padding:2px 0;color:#5B5560;">Tax</td><td style="padding:2px 0;text-align:right;color:#5B5560;">${formatCents(n.taxCents)}</td></tr>
     <tr><td style="padding:8px 0 0;color:#E8308A;font-weight:bold;font-size:16px;">Total</td><td style="padding:8px 0 0;text-align:right;color:#E8308A;font-weight:bold;font-size:16px;">${formatCents(n.totalCents)}</td></tr>`;
@@ -123,7 +129,7 @@ ${contact.join("\n")}
 
 ${itemLinesText(n)}
 
-Subtotal: ${formatCents(n.subtotalCents)}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
+Subtotal: ${formatCents(n.subtotalCents)}${n.discountCents > 0 ? `\nVendor discount: -${formatCents(n.discountCents)}` : ""}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
 Tax: ${formatCents(n.taxCents)}
 Total: ${formatCents(n.totalCents)}`;
 
@@ -159,7 +165,7 @@ Order #${n.shortId} — ${methodLabel(n.method)}
 
 ${itemLinesText(n)}
 
-Subtotal: ${formatCents(n.subtotalCents)}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
+Subtotal: ${formatCents(n.subtotalCents)}${n.discountCents > 0 ? `\nVendor discount: -${formatCents(n.discountCents)}` : ""}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
 Tax: ${formatCents(n.taxCents)}
 Total: ${formatCents(n.totalCents)}
 

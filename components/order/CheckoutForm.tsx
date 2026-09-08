@@ -137,6 +137,7 @@ function LockGlyph() {
 
 type Totals = {
   subtotalCents: number;
+  discountCents: number;
   taxCents: number;
   feeCents: number;
   totalCents: number;
@@ -229,27 +230,32 @@ export default function CheckoutForm({
     };
   }, [appId, locationId, squareEnv, items.length]);
 
-  // Live subtotal/tax/fee/total from Square — re-quotes when the method changes.
+  // Live subtotal/discount/tax/fee/total — re-quotes when the cart, method, or
+  // email changes (email drives any vendor discount). Debounced so typing an
+  // email doesn't fire a request per keystroke.
   useEffect(() => {
     if (lines.length === 0) {
       setTotals(null);
       return;
     }
     let cancelled = false;
-    fetch("/api/order/quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines, method }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && d.ok) setTotals(d);
+    const timer = setTimeout(() => {
+      fetch("/api/order/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines, method, email: email.trim() || undefined }),
       })
-      .catch(() => {});
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && d.ok) setTotals(d);
+        })
+        .catch(() => {});
+    }, 350);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [lines, method]);
+  }, [lines, method, email]);
 
   useEffect(() => {
     if (placed) window.scrollTo({ top: 0, behavior: "auto" });
@@ -669,6 +675,9 @@ export default function CheckoutForm({
           </ul>
           <div className="space-y-1.5 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
             <Row label="Subtotal" value={formatCents(totals?.subtotalCents ?? subtotalCents)} />
+            {totals && totals.discountCents > 0 && (
+              <Row label="Vendor discount" value={`-${formatCents(totals.discountCents)}`} />
+            )}
             {method === "delivery" && (
               <Row label="Local delivery" value={totals ? formatCents(totals.feeCents) : "—"} />
             )}

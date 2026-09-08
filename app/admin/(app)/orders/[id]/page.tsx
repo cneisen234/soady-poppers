@@ -151,6 +151,12 @@ export default async function OrderDetailPage({
             <span className="k">Subtotal</span>
             <span className="v admin-num">{formatCents(order.subtotalCents)}</span>
           </li>
+          {order.discountCents > 0 && (
+            <li>
+              <span className="k">Vendor discount</span>
+              <span className="v admin-num">-{formatCents(order.discountCents)}</span>
+            </li>
+          )}
           {order.feeCents > 0 && (
             <li>
               <span className="k">Delivery</span>

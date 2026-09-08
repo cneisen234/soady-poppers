@@ -17,6 +17,7 @@ import {
   type DeliveryAddress,
 } from "@/lib/db/schema";
 import { getSettings, deliveryFeeCents, type Settings } from "@/lib/settings";
+import { discountBpsForEmail } from "@/lib/discounts";
 import { notifyNewOrder } from "@/lib/notifications";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
 
@@ -27,6 +28,7 @@ export type Fulfillment = { method: FulfillmentMethod; address?: DeliveryAddress
 
 export type OrderTotals = {
   subtotalCents: number;
+  discountCents: number;
   taxCents: number;
   feeCents: number;
   totalCents: number;
@@ -181,6 +183,7 @@ function computeTotals(
   lines: CheckoutLine[],
   method: FulfillmentMethod,
   s: Settings,
+  discountBps = 0,
 ): { totals: OrderTotals; items: SnapshotItem[] } {
   let subtotal = 0;
   let tax = 0;
@@ -212,22 +215,29 @@ function computeTotals(
     });
   }
 
+  // Vendor discount comes off the merchandise subtotal (not tax or delivery),
+  // clamped so it can never exceed the subtotal.
+  const discountCents = Math.min(subtotal, Math.round((subtotal * discountBps) / 10000));
   const feeCents = method === "delivery" ? deliveryFeeCents(itemCount, s) : 0;
-  const totalCents = subtotal + tax + feeCents;
+  const totalCents = subtotal - discountCents + tax + feeCents;
   return {
-    totals: { subtotalCents: subtotal, taxCents: tax, feeCents, totalCents },
+    totals: { subtotalCents: subtotal, discountCents, taxCents: tax, feeCents, totalCents },
     items,
   };
 }
 
-/** Preview subtotal/tax/fee/total from the DB (nothing is created). */
+/** Preview subtotal/discount/tax/fee/total from the DB (nothing is created). */
 export async function quoteOrder(
   lines: CheckoutLine[],
   method: FulfillmentMethod = "pickup",
+  email?: string,
 ): Promise<OrderTotals> {
   const s = await getSettings();
-  const rows = await queryLineRows(lines);
-  return computeTotals(rows, lines, method, s).totals;
+  const [rows, discountBps] = await Promise.all([
+    queryLineRows(lines),
+    discountBpsForEmail(email),
+  ]);
+  return computeTotals(rows, lines, method, s, discountBps).totals;
 }
 
 export type PlacedOrder = OrderTotals & {
@@ -255,8 +265,11 @@ export async function placeOrder(
     throw new SoldOutError(validation.problems, validation.soldOut, validation.paused);
   }
 
-  const rows = await queryLineRows(lines);
-  const { totals, items } = computeTotals(rows, lines, fulfillment.method, s);
+  const [rows, discountBps] = await Promise.all([
+    queryLineRows(lines),
+    discountBpsForEmail(customer.email),
+  ]);
+  const { totals, items } = computeTotals(rows, lines, fulfillment.method, s, discountBps);
   if (totals.totalCents <= 0) throw new Error("Order total is invalid.");
 
   // Charge — Square Payments only (amount computed by us).
@@ -286,6 +299,7 @@ export async function placeOrder(
           fulfillment.method === "delivery" ? fulfillment.address ?? null : null,
         note: customer.note || null,
         subtotalCents: totals.subtotalCents,
+        discountCents: totals.discountCents,
         taxCents: totals.taxCents,
         feeCents: totals.feeCents,
         totalCents: totals.totalCents,

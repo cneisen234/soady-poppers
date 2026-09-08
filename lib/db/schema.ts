@@ -150,6 +150,9 @@ export const orders = pgTable(
     address: jsonb("address").$type<DeliveryAddress>(),
     note: text("note"),
     subtotalCents: integer("subtotal_cents").notNull(),
+    // Vendor discount applied off the subtotal (0 when none). Snapshotted here so
+    // editing/removing a vendor rate later never rewrites a past receipt.
+    discountCents: integer("discount_cents").notNull().default(0),
     taxCents: integer("tax_cents").notNull(),
     feeCents: integer("fee_cents").notNull(),
     totalCents: integer("total_cents").notNull(),
@@ -205,6 +208,23 @@ export const payments = pgTable(
     uniqueIndex("payments_square_id_key").on(t.squarePaymentId),
     index("payments_order_idx").on(t.orderId),
   ],
+);
+
+// ---- Vendor discounts ----
+// A whitelist of customer emails that get a standing percent-off. Matched on the
+// email entered at checkout (case-insensitive; stored lowercased).
+export const vendorDiscounts = pgTable(
+  "vendor_discounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    // Discount in basis points off the subtotal (1000 = 10.00%).
+    discountBps: integer("discount_bps").notNull(),
+    label: text("label"), // optional note, e.g. the vendor's name
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("vendor_discounts_email_key").on(t.email)],
 );
 
 // ---- Settings (single row) ----

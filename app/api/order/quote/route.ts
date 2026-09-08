@@ -11,6 +11,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       lines?: CheckoutLine[];
       method?: FulfillmentMethod;
+      email?: string;
     };
     const lines = body.lines ?? [];
     if (lines.length === 0) {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const totals = await quoteOrder(lines, body.method ?? "pickup");
+    const totals = await quoteOrder(lines, body.method ?? "pickup", body.email);
     return Response.json({ ok: true, ...totals });
   } catch (err) {
     return Response.json(
