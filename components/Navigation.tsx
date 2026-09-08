@@ -6,16 +6,18 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { shop } from '@/lib/shop';
 import OpenStatus from './OpenStatus';
+import type { WeekHours } from '@/lib/status';
 
 const links = [
   { href: '/', label: 'Home' },
   { href: '/menu', label: 'Menu' },
+  { href: '/order', label: 'Order' },
   { href: '/big-poppas', label: "Big Poppa's" },
   { href: '/about', label: 'Our Story' },
   { href: '/visit', label: 'Visit' },
 ];
 
-export default function Navigation() {
+export default function Navigation({ hours }: { hours?: WeekHours }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -99,7 +101,7 @@ export default function Navigation() {
             {/* Right side: open-status + phone (secondary) + Order CTA (primary) */}
             <div className="hidden md:flex items-center gap-4">
               <div className="flex flex-col items-end leading-tight">
-                <OpenStatus />
+                <OpenStatus hours={hours} />
                 <a
                   href={shop.phoneHref}
                   className="text-xs font-semibold hover:underline"
@@ -108,14 +110,14 @@ export default function Navigation() {
                   {shop.phone}
                 </a>
               </div>
-              <Link href="/menu" className="btn-pop text-sm">
-                See the Menu
+              <Link href="/order" className="btn-pop text-sm">
+                Order Online
               </Link>
             </div>
 
             {/* Open status + hamburger — mobile only */}
             <div className="md:hidden flex items-center gap-2.5">
-              <OpenStatus compact />
+              <OpenStatus compact hours={hours} />
               <button
                 className="relative w-10 h-10 flex items-center justify-center rounded-full transition-colors"
                 style={{ backgroundColor: isOpen ? 'var(--magenta)' : 'rgba(240, 121, 159, 0.14)' }}
@@ -186,17 +188,6 @@ export default function Navigation() {
               })}
             </ul>
           </nav>
-
-          {/* CTA + contact at the bottom of the overlay */}
-          <div className="pt-8" style={{ borderTop: '1px solid rgba(251, 246, 234, 0.2)' }}>
-            <Link
-              href="/menu"
-              onClick={() => setIsOpen(false)}
-              className="btn-pop w-full text-lg"
-            >
-              See the Menu
-            </Link>
-          </div>
         </div>
       </div>
     </>

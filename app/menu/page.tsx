@@ -1,21 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import { listCatalog, type Product } from '@/lib/catalog';
 import {
-  shop,
   menuSections,
-  dirtySoda,
-  lemonade,
-  energyDrinks,
-  fizzyFix,
-  lattes,
-  popcorn,
+  menuLayout,
   topSeller,
-  addOns,
-  type MenuGroup,
-  type DrinkItem,
+  popcorn,
   type PriceTier,
   type Accent,
+  type MenuSectionConfig,
 } from '@/lib/shop';
 import { Drips, Splat, TapedPhoto, vars } from '@/components/bp-graffiti';
 
@@ -25,6 +19,9 @@ export const metadata: Metadata = {
     "The full Soady Poppers menu: dirty sodas, fresh-squeezed lemonade, Main Character energy refreshers, Fizzy Fix sparkling waters, iced & chai lattes, and Big Poppa's gourmet kettle corn. Made fresh in Fairview, MI.",
 };
 
+// The catalog is admin-managed, so always render the live version.
+export const dynamic = 'force-dynamic';
+
 const accentColor: Record<Accent, string> = {
   pink: 'var(--pink-deep)',
   teal: 'var(--teal-deep)',
@@ -33,7 +30,6 @@ const accentColor: Record<Accent, string> = {
   lime: 'var(--pine)',
 };
 
-// Cycle neon fills + hand-slapped rotations for the Big Poppa's flavor stickers.
 const BP_STICKER = [
   { fill: 'var(--bp-yellow)', rot: -4 },
   { fill: 'var(--bp-lime)', rot: 3 },
@@ -41,12 +37,43 @@ const BP_STICKER = [
   { fill: 'var(--bp-cyan)', rot: 5 },
 ];
 
-function Tiers({ tiers }: { tiers: readonly PriceTier[] }) {
+function money(cents: number): string {
+  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+}
+function variationKey(p: Product | undefined): string {
+  return (p?.variations ?? []).map((v) => `${v.name}:${v.priceCents}`).join('|');
+}
+
+// Price-tier chips derived from the section's own items: if every category shares
+// the same sizes/prices, show those sizes; otherwise show one chip per category
+// (e.g. lemonade — Classic / Flavored / Dirty).
+function deriveTiers(section: MenuSectionConfig, byCat: Map<string, Product[]>): PriceTier[] {
+  const perCat = section.groups
+    .map((g) => ({ group: g, first: (byCat.get(g.category) ?? [])[0] }))
+    .filter((c) => c.first && c.first.variations.length > 0);
+  if (perCat.length === 0) return [];
+
+  const uniform = new Set(perCat.map((c) => variationKey(c.first))).size === 1;
+  if (uniform) {
+    return perCat[0].first!.variations.map((v) => {
+      const [label, ...rest] = v.name.split(' · ');
+      return { label, detail: rest.join(' · ') || undefined, price: money(v.priceCents) };
+    });
+  }
+  return perCat.map((c) => {
+    const short = c.group.category.replace(/\s*Lemonade$/i, '').trim() || c.group.category;
+    const v = c.first!.variations[0];
+    return { label: short, detail: v.name, price: money(v.priceCents) };
+  });
+}
+
+function Tiers({ tiers }: { tiers: PriceTier[] }) {
+  if (tiers.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-2">
       {tiers.map((t) => (
         <span
-          key={t.label}
+          key={`${t.label}-${t.price}`}
           className="inline-flex items-baseline gap-1.5 rounded-full px-3.5 py-1.5 text-sm"
           style={{ backgroundColor: 'var(--paper)', border: '2px solid var(--charcoal)', boxShadow: '2px 2px 0 var(--charcoal)' }}
         >
@@ -59,49 +86,59 @@ function Tiers({ tiers }: { tiers: readonly PriceTier[] }) {
   );
 }
 
-function DrinkList({ items, accent }: { items: DrinkItem[]; accent: Accent }) {
+function GroupCard({
+  title,
+  accent,
+  items,
+  wide,
+}: {
+  title: string;
+  accent: Accent;
+  items: Product[];
+  wide?: boolean;
+}) {
+  const shadow = accent === 'teal' ? 'card-pop-teal' : accent === 'lemon' ? 'card-pop-lemon' : '';
   return (
-    <ul className="space-y-3.5">
-      {items.map((it) => (
-        <li key={it.name}>
-          <div className="flex items-baseline gap-2">
+    <div className={`card-pop ${shadow} p-6`}>
+      <h3 className="text-xl mb-4" style={{ color: accentColor[accent] }}>{title}</h3>
+      <ul className={wide ? 'grid sm:grid-cols-2 gap-x-8 gap-y-3.5' : 'space-y-3.5'}>
+        {items.map((it) => (
+          <li key={it.id}>
             <span className="text-base font-bold" style={{ fontFamily: 'var(--font-fredoka)', color: accentColor[accent] }}>
               {it.name}
             </span>
-          </div>
-          <p className="text-sm leading-snug" style={{ color: 'var(--ash)' }}>{it.desc}</p>
-          {it.note && <p className="text-xs italic mt-0.5" style={{ color: 'var(--stone)' }}>{it.note}</p>}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function GroupCard({ group }: { group: MenuGroup }) {
-  const shadow =
-    group.accent === 'teal' ? 'card-pop-teal' : group.accent === 'lemon' ? 'card-pop-lemon' : '';
-  return (
-    <div className={`card-pop ${shadow} p-6`}>
-      <h3 className="text-xl mb-4" style={{ color: accentColor[group.accent] }}>{group.title}</h3>
-      <DrinkList items={group.items} accent={group.accent} />
+            {it.description && (
+              <p className="text-sm leading-snug" style={{ color: 'var(--ash)' }}>{it.description}</p>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-function SectionHeader({ id, eyebrow, title, tagline, tiers }: {
-  id: string; eyebrow: string; title: string; tagline: string; tiers: readonly PriceTier[];
-}) {
-  return (
-    <div id={id} className="scroll-mt-24 mb-8">
-      <span className="eyebrow">{eyebrow}</span>
-      <h2 className="text-3xl md:text-4xl mt-2">{title}</h2>
-      <p className="mt-2 text-lg" style={{ color: 'var(--ash)' }}>{tagline}</p>
-      <div className="mt-4"><Tiers tiers={tiers} /></div>
-    </div>
-  );
+function gridClass(count: number): string {
+  if (count <= 1) return 'grid grid-cols-1 gap-6';
+  if (count === 2) return 'grid md:grid-cols-2 gap-6';
+  return 'grid md:grid-cols-2 lg:grid-cols-3 gap-6';
 }
 
-export default function MenuPage() {
+export default async function MenuPage() {
+  const catalog = await listCatalog();
+
+  // Group products by category name for quick lookup.
+  const byCat = new Map<string, Product[]>();
+  for (const p of catalog.products) {
+    if (!p.categoryName) continue;
+    const list = byCat.get(p.categoryName) ?? [];
+    list.push(p);
+    byCat.set(p.categoryName, list);
+  }
+
+  // Top seller — pull the live description from the catalog when available.
+  const topSellerProduct = catalog.products.find((p) => p.name === topSeller.name);
+  const topSellerDesc = topSellerProduct?.description ?? topSeller.desc;
+
   return (
     <>
       {/* Hero */}
@@ -113,7 +150,7 @@ export default function MenuPage() {
             The <span className="font-script" style={{ color: 'var(--magenta)' }}>Menu</span>
           </h1>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/visit" className="btn-pop">Visit Us in Fairview</Link>
+            <Link href="/order" className="btn-pop">Order Online</Link>
             <Link href="/visit" className="btn-outline">Hours & Directions</Link>
           </div>
         </div>
@@ -147,114 +184,56 @@ export default function MenuPage() {
             <h2 className="text-2xl md:text-3xl mt-1">
               <span className="font-script" style={{ color: 'var(--magenta)' }}>{topSeller.name}</span>
             </h2>
-            <p className="mt-1 font-semibold" style={{ color: 'var(--charcoal)' }}>{topSeller.desc}</p>
-            <p className="mt-1 text-sm" style={{ color: 'var(--ash)' }}>{topSeller.note}</p>
+            <p className="mt-1 font-semibold" style={{ color: 'var(--charcoal)' }}>{topSellerDesc}</p>
           </div>
         </div>
       </section>
 
-      {/* Dirty Soda */}
-      <section className="section-padding pb-10">
-        <div className="container mx-auto px-4">
-          <SectionHeader id={dirtySoda.id} eyebrow="Loaded pop" title="Dirty Soda" tagline={dirtySoda.tagline} tiers={dirtySoda.tiers} />
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dirtySoda.groups.map((g) => <GroupCard key={g.title} group={g} />)}
-          </div>
-          <p className="mt-6 text-center text-sm italic" style={{ color: 'var(--stone)' }}>{dirtySoda.note}</p>
-        </div>
-      </section>
-
-      {/* Lemonade */}
-      <section className="py-10" style={{ backgroundColor: 'var(--paper)' }}>
-        <div className="container mx-auto px-4">
-          <SectionHeader id={lemonade.id} eyebrow="Squeezed fresh" title="Fresh-Squeezed Lemonade" tagline={lemonade.tagline} tiers={lemonade.tiers} />
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="card-pop card-pop-lemon p-6">
-              <h3 className="text-xl mb-4" style={{ color: 'var(--lemon-deep)' }}>{lemonade.flavored.title}</h3>
-              <DrinkList items={lemonade.flavored.items} accent="lemon" />
-            </div>
-            <div className="card-pop p-6">
-              <h3 className="text-xl mb-4" style={{ color: 'var(--pink-deep)' }}>{lemonade.dirty.title}</h3>
-              <DrinkList items={lemonade.dirty.items} accent="pink" />
-            </div>
-          </div>
-          <p className="mt-6 text-center text-sm italic" style={{ color: 'var(--stone)' }}>{lemonade.note}</p>
-        </div>
-      </section>
-
-      {/* Energy */}
-      <section className="section-padding pb-10">
-        <div className="container mx-auto px-4">
-          <SectionHeader id={energyDrinks.id} eyebrow="⚡ Made with energy drinks" title={energyDrinks.label} tagline={energyDrinks.tagline} tiers={energyDrinks.tiers} />
-          <div className="card-pop card-pop-teal p-6 md:p-8">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3.5">
-              {energyDrinks.items.map((it) => (
-                <div key={it.name}>
-                  <span className="text-base font-bold" style={{ fontFamily: 'var(--font-fredoka)', color: 'var(--teal-deep)' }}>{it.name}</span>
-                  <p className="text-sm leading-snug" style={{ color: 'var(--ash)' }}>{it.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Fizzy Fix */}
-      <section className="py-10" style={{ backgroundColor: 'var(--paper)' }}>
-        <div className="container mx-auto px-4">
-          <SectionHeader id={fizzyFix.id} eyebrow="Sparkling water base" title={fizzyFix.label} tagline={fizzyFix.tagline} tiers={fizzyFix.tiers} />
-          <div className="card-pop p-6 md:p-8">
-            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3.5">
-              {fizzyFix.items.map((it) => (
-                <div key={it.name}>
-                  <span className="text-base font-bold" style={{ fontFamily: 'var(--font-fredoka)', color: 'var(--pink-deep)' }}>{it.name}</span>
-                  <p className="text-sm leading-snug" style={{ color: 'var(--ash)' }}>{it.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Lattes */}
-      <section className="section-padding pb-10">
-        <div className="container mx-auto px-4">
-          <SectionHeader id={lattes.id} eyebrow="Not feelin’ fizzy?" title="Iced & Chai Lattes" tagline={lattes.tagline} tiers={lattes.tiers} />
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="card-pop card-pop-lemon p-6">
-              <h3 className="text-xl mb-4" style={{ color: 'var(--lemon-deep)' }}>{lattes.iced.title}</h3>
-              <ul className="space-y-2">
-                {lattes.iced.flavors.map((f) => (
-                  <li key={f} className="text-sm font-semibold" style={{ color: 'var(--charcoal)' }}>{f}</li>
+      {/* Drink sections — grouped per menuLayout, items pulled from the catalog */}
+      {menuLayout.map((section) => {
+        const tiers = deriveTiers(section, byCat);
+        const single = section.groups.length === 1;
+        return (
+          <section
+            key={section.id}
+            id={section.id}
+            className="section-padding pb-10 scroll-mt-24"
+            style={section.altBg ? { backgroundColor: 'var(--paper)' } : undefined}
+          >
+            <div className="container mx-auto px-4">
+              <div className="mb-8">
+                <span className="eyebrow">{section.eyebrow}</span>
+                <h2 className="text-3xl md:text-4xl mt-2">{section.title}</h2>
+                {section.tagline && <p className="mt-2 text-lg" style={{ color: 'var(--ash)' }}>{section.tagline}</p>}
+                <div className="mt-4"><Tiers tiers={tiers} /></div>
+              </div>
+              <div className={gridClass(section.groups.length)}>
+                {section.groups.map((g) => (
+                  <GroupCard
+                    key={g.category}
+                    title={g.title ?? g.category}
+                    accent={g.accent}
+                    items={byCat.get(g.category) ?? []}
+                    wide={single}
+                  />
                 ))}
-              </ul>
+              </div>
+              {section.note && (
+                <p className="mt-6 text-center text-sm italic" style={{ color: 'var(--stone)' }}>{section.note}</p>
+              )}
             </div>
-            <div className="card-pop card-pop-teal p-6">
-              <h3 className="text-xl mb-4" style={{ color: 'var(--teal-deep)' }}>{lattes.chai.title}</h3>
-              <ul className="space-y-2">
-                {lattes.chai.flavors.map((f) => (
-                  <li key={f} className="text-sm font-semibold" style={{ color: 'var(--charcoal)' }}>{f}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        );
+      })}
 
-      {/* Add-ons + order CTA */}
+      {/* Order CTA */}
       <section className="section-padding">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <span className="eyebrow">Make it yours</span>
-            <h2 className="text-2xl md:text-3xl mt-2">Add-ons</h2>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2.5 mb-10">
-            {addOns.map((a) => <span key={a} className="badge badge-teal">{a}</span>)}
-          </div>
           <div className="rounded-[1.5rem] p-8 text-center" style={{ background: 'var(--teal-deep)' }}>
+            <h2 className="text-2xl md:text-3xl" style={{ color: 'var(--bone)' }}>Ready for a pop?</h2>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/visit" className="btn-pop">Hours & Directions</Link>
-              <Link href="/about" className="btn-outline btn-outline-cream">Our Story</Link>
+              <Link href="/order" className="btn-pop">Order Online</Link>
+              <Link href="/visit" className="btn-outline btn-outline-cream">Hours & Directions</Link>
             </div>
           </div>
         </div>

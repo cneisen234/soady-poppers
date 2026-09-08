@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { shop, topSeller, popcorn } from '@/lib/shop';
+import { getSettings } from '@/lib/settings';
 import OpenStatus from '@/components/OpenStatus';
 import OpenSign from '@/components/OpenSign';
 import { Drips, Splat, TapedPhoto, vars } from '@/components/bp-graffiti';
@@ -53,7 +54,8 @@ const favorites = [
   { name: 'Love You Cherry Much', desc: 'Cherry · Vanilla · Cold Foam', tag: 'Dirty Soda' },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const { hours } = await getSettings();
   return (
     <>
       {/* ---------------- HERO ---------------- */}
@@ -92,7 +94,7 @@ export default function Home() {
                 <Link href="/visit" className="btn-outline text-base">Visit the Shop</Link>
               </div>
               <div className="fade-in-up stagger-4 mt-6 flex items-center gap-3 justify-center lg:justify-start">
-                <OpenStatus />
+                <OpenStatus hours={hours} />
               </div>
             </div>
 
@@ -118,7 +120,7 @@ export default function Home() {
                   <Image src="/soady-poppers-logo.webp" alt="Soady Poppers mascot" width={200} height={200} className="w-full h-full object-cover" />
                 </div>
                 {/* Live open/closed sign — upper-left corner of the photo */}
-                <OpenSign className="absolute -top-4 -left-4 z-20 scale-90 origin-top-left" />
+                <OpenSign hours={hours} className="absolute -top-4 -left-4 z-20 scale-90 origin-top-left" />
               </div>
             </div>
           </div>

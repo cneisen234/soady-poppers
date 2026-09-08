@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { shop, hoursDisplay } from '@/lib/shop';
+import { shop } from '@/lib/shop';
+import { getSettings } from '@/lib/settings';
+import { formatHours } from '@/lib/status';
 import OpenStatus from '@/components/OpenStatus';
 
 export const metadata: Metadata = {
@@ -10,7 +12,9 @@ export const metadata: Metadata = {
     "Find Soady Poppers in Fairview, Michigan. Hours, directions, and where to grab dirty sodas, fresh lemonade and kettle corn — all made fresh at the counter.",
 };
 
-export default function VisitPage() {
+export default async function VisitPage() {
+  const { hours } = await getSettings();
+  const hoursDisplay = formatHours(hours);
   return (
     <>
       {/* Hero */}
@@ -22,7 +26,7 @@ export default function VisitPage() {
             Come <span className="font-script" style={{ color: 'var(--magenta)' }}>Visit</span>
           </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <OpenStatus className="text-sm" />
+            <OpenStatus className="text-sm" hours={hours} />
           </div>
         </div>
       </section>

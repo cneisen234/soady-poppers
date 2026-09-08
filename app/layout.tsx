@@ -1,8 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Pacifico, Fredoka, Nunito_Sans, Bangers, Permanent_Marker } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import OrderBar from "@/components/OrderBar";
+import HideOnAdmin from "@/components/HideOnAdmin";
+import { getSettings } from "@/lib/settings";
+
+// reCAPTCHA v3 is behavioral — loading it site-wide lets Google build a risk
+// profile across the whole visit. The token is executed + verified only on the
+// sensitive action (order submit); see components/order/CheckoutForm.tsx.
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 // Bouncy soda-fountain script — the wordmark + hero flourishes. Accents only.
 const pacifico = Pacifico({
@@ -55,16 +64,32 @@ export const viewport: Viewport = {
   themeColor: "#F0799F",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { hours } = await getSettings();
   return (
     <html
       lang="en"
       className={`${pacifico.variable} ${fredoka.variable} ${nunito.variable} ${bangers.variable} ${permanentMarker.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Navigation />
+        {/* Storefront chrome — hidden on the internal /admin console. */}
+        <HideOnAdmin>
+          <Navigation hours={hours} />
+        </HideOnAdmin>
         <main className="flex-1">{children}</main>
-        <Footer />
+        <HideOnAdmin>
+          <Footer hours={hours} />
+        </HideOnAdmin>
+        {/* Mobile-only floating "Order Online" bar (hidden on the order flow) */}
+        <HideOnAdmin>
+          <OrderBar />
+        </HideOnAdmin>
+        {RECAPTCHA_SITE_KEY && (
+          <Script
+            src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );

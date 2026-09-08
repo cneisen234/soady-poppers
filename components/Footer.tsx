@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { shop, hoursDisplay } from '@/lib/shop';
+import { shop } from '@/lib/shop';
+import { formatHours, type WeekHours } from '@/lib/status';
 
-export default function Footer() {
+export default function Footer({ hours }: { hours?: WeekHours }) {
+  const hoursDisplay = formatHours(hours);
   return (
     <footer className="relative overflow-hidden mt-auto" style={{ backgroundColor: 'var(--teal-deep)' }}>
       {/* Ambient glows echoing the mobile menu + the logo's watercolor sky */}
