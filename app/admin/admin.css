@@ -495,6 +495,33 @@ textarea.admin-input { resize: vertical; }
   flex: 0 0 auto;
 }
 
+/* Add-discount form: one row on desktop (email · % off · button); on mobile the
+   email spans the top and % off / button split the second row. */
+.admin-discount-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 2px solid var(--border);
+}
+.admin-discount-add > .admin-input {
+  flex: 1;
+  min-width: 0;
+}
+.admin-discount-add-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+@media (max-width: 560px) {
+  .admin-discount-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* Rate field with a % suffix (vendor discounts) */
 .admin-rate {
   display: flex;

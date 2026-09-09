@@ -34,7 +34,7 @@ export default async function DiscountsPanel() {
           </p>
         )}
 
-        <form action={createDiscount} className="admin-list-add">
+        <form action={createDiscount} className="admin-discount-add">
           <input
             name="email"
             type="email"
@@ -42,18 +42,20 @@ export default async function DiscountsPanel() {
             className="admin-input"
             required
           />
-          <input
-            name="ratePercent"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="% off"
-            className="admin-input sm w-24"
-            required
-          />
-          <button type="submit" className="admin-btn">
-            + Add discount
-          </button>
+          <div className="admin-discount-add-row">
+            <input
+              name="ratePercent"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="% off"
+              className="admin-input sm w-24"
+              required
+            />
+            <button type="submit" className="admin-btn">
+              + Add discount
+            </button>
+          </div>
         </form>
       </div>
     </section>
