@@ -192,18 +192,6 @@ export const bigPoppa = {
       color: "yellow",
     },
     {
-      name: "Blue Dream",
-      tag: "Coldest in the game",
-      desc: "Electric blue-razz candy shell with a loud, sweet pop of flavor.",
-      color: "cyan",
-    },
-    {
-      name: "Cinna-Man",
-      tag: "Sweet heat",
-      desc: "Warm cinnamon-sugar churro coating dusted over fresh-popped kettle corn.",
-      color: "pink",
-    },
-    {
       name: "Bomb Pop",
       tag: "Red, white & boom",
       desc: "Cherry, lime and blue-razz layered up like the classic summer rocket pop.",
