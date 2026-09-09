@@ -103,6 +103,26 @@ export default function Storefront({
     boxShadow: "2px 2px 0 var(--charcoal)",
   };
 
+  // Shared dropdown chevron (positioned inside a `relative` wrapper).
+  const chevron = (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
+    >
+      <path
+        d="M2.5 4.5 6 8l3.5-3.5"
+        stroke="var(--magenta)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+
   // Store paused — replace the whole storefront with a branded notice.
   if (!ordering) {
     const message =
@@ -156,8 +176,8 @@ export default function Storefront({
         }}
       >
         <div className="container mx-auto px-4 py-2.5 space-y-2.5">
+          {/* Row 1: search (full width on mobile; shares the row with Sort on desktop) */}
           <div className="flex gap-2.5">
-            {/* Search */}
             <div className="relative flex-1">
               <span
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm"
@@ -172,13 +192,14 @@ export default function Storefront({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search drinks…"
                 aria-label="Search drinks"
-                className="w-full rounded-full pl-9 pr-4 py-2 text-sm outline-none"
+                // text-base (16px) on mobile stops iOS from zooming in on focus.
+                className="w-full rounded-full pl-9 pr-4 py-2 text-base sm:text-sm outline-none"
                 style={inputStyle}
               />
             </div>
 
-            {/* Sort */}
-            <div className="relative">
+            {/* Sort — desktop position (row 1, right) */}
+            <div className="relative hidden sm:block">
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortKey)}
@@ -192,27 +213,12 @@ export default function Storefront({
                   </option>
                 ))}
               </select>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 12 12"
-                fill="none"
-                aria-hidden
-                className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
-              >
-                <path
-                  d="M2.5 4.5 6 8l3.5-3.5"
-                  stroke="var(--magenta)"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              {chevron}
             </div>
           </div>
 
-          {/* Category filter chips */}
-          <ul className="flex gap-2 overflow-x-auto no-scrollbar">
+          {/* Row 2 (desktop): category filter chips */}
+          <ul className="hidden sm:flex gap-2 overflow-x-auto no-scrollbar">
             {[{ id: "all", name: "All" }, ...catalog.categories].map((cat) => {
               const active = category === cat.id;
               return (
@@ -234,6 +240,43 @@ export default function Storefront({
               );
             })}
           </ul>
+
+          {/* Row 2 (mobile): category dropdown (left) + sort dropdown (right) */}
+          <div className="flex gap-2.5 sm:hidden">
+            <div className="relative flex-1">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                aria-label="Filter by category"
+                className="appearance-none rounded-full pl-4 pr-9 py-2 text-base font-semibold outline-none cursor-pointer w-full"
+                style={inputStyle}
+              >
+                <option value="all">All categories</option>
+                {catalog.categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              {chevron}
+            </div>
+            <div className="relative flex-1">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                aria-label="Sort drinks"
+                className="appearance-none rounded-full pl-4 pr-9 py-2 text-base font-semibold outline-none cursor-pointer w-full"
+                style={inputStyle}
+              >
+                {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                  <option key={k} value={k}>
+                    {SORT_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+              {chevron}
+            </div>
+          </div>
         </div>
       </div>
 

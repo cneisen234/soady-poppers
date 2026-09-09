@@ -12,6 +12,7 @@ import {
   type MenuSectionConfig,
 } from '@/lib/shop';
 import { Drips, Splat, TapedPhoto, vars } from '@/components/bp-graffiti';
+import MenuSectionSelect from './menu-section-select';
 
 export const metadata: Metadata = {
   title: 'Menu — Dirty Sodas, Lemonade, Energy & Kettle Corn | Soady Poppers',
@@ -159,7 +160,8 @@ export default async function MenuPage() {
       {/* Sticky category rail */}
       <div className="sticky top-18 z-30" style={{ backgroundColor: 'rgba(246,240,222,0.9)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border)' }}>
         <div className="container mx-auto px-4">
-          <ul className="flex gap-2 overflow-x-auto no-scrollbar py-3">
+          {/* Desktop: bubble rail */}
+          <ul className="hidden sm:flex gap-2 overflow-x-auto no-scrollbar py-3">
             {menuSections.map((s) => (
               <li key={s.id}>
                 <a
@@ -172,6 +174,8 @@ export default async function MenuPage() {
               </li>
             ))}
           </ul>
+          {/* Mobile: dropdown */}
+          <MenuSectionSelect sections={menuSections.map((s) => ({ id: s.id, label: s.label }))} />
         </div>
       </div>
 
