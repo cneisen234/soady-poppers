@@ -4,18 +4,17 @@ import { vendorDiscounts } from "@/lib/db/schema";
 import { createDiscount } from "./actions";
 import DiscountRow from "./discount-row";
 
-export const dynamic = "force-dynamic";
-
-export default async function DiscountsPage() {
+// Vendor-discount management, rendered as a section on the Orders page.
+export default async function DiscountsPanel() {
   const rows = await db
     .select()
     .from(vendorDiscounts)
     .orderBy(asc(vendorDiscounts.email));
 
   return (
-    <>
-      <h1 className="admin-h1">Vendor discounts</h1>
-      <p className="admin-sub">
+    <section style={{ marginTop: 40 }}>
+      <h2 className="admin-h2">Vendor discounts</h2>
+      <p className="admin-sub" style={{ marginBottom: 16 }}>
         Customers whose checkout email matches one of these get the listed percent off the
         item subtotal automatically.
       </p>
@@ -57,6 +56,6 @@ export default async function DiscountsPage() {
           </button>
         </form>
       </div>
-    </>
+    </section>
   );
 }

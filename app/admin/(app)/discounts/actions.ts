@@ -33,7 +33,7 @@ export async function createDiscount(form: FormData): Promise<void> {
       set: { discountBps, updatedAt: new Date() },
     });
   await flashToast("Discount saved");
-  revalidatePath("/admin/discounts");
+  revalidatePath("/admin/orders");
 }
 
 export async function updateDiscount(form: FormData): Promise<void> {
@@ -47,7 +47,7 @@ export async function updateDiscount(form: FormData): Promise<void> {
     .set({ email, discountBps: pctToBps(field(form, "ratePercent")), updatedAt: new Date() })
     .where(eq(vendorDiscounts.id, id));
   // Auto-saved from the row — no toast, no current-page refresh.
-  revalidatePath("/admin/discounts");
+  revalidatePath("/admin/orders");
 }
 
 export async function deleteDiscount(form: FormData): Promise<void> {
@@ -56,5 +56,5 @@ export async function deleteDiscount(form: FormData): Promise<void> {
   if (!id) return;
   await db.delete(vendorDiscounts).where(eq(vendorDiscounts.id, id));
   await flashToast("Discount removed");
-  revalidatePath("/admin/discounts");
+  revalidatePath("/admin/orders");
 }
