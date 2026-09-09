@@ -141,6 +141,10 @@ type Totals = {
   taxCents: number;
   feeCents: number;
   totalCents: number;
+  // Coupon echo from the quote: the applied code (null if none/vendor rate), and
+  // whether an entered code was recognized (null when none was entered).
+  appliedCouponCode?: string | null;
+  couponValid?: boolean | null;
 };
 
 // Delivery is limited to these towns — city and ZIP are constrained to match.
@@ -189,6 +193,7 @@ export default function CheckoutForm({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
+  const [coupon, setCoupon] = useState("");
   const [addr, setAddr] = useState<Address>(EMPTY_ADDRESS);
   // Variation ids that sold out at checkout — drives the sold-out modal.
   const [soldOut, setSoldOut] = useState<string[] | null>(null);
@@ -230,9 +235,9 @@ export default function CheckoutForm({
     };
   }, [appId, locationId, squareEnv, items.length]);
 
-  // Live subtotal/discount/tax/fee/total — re-quotes when the cart, method, or
-  // email changes (email drives any vendor discount). Debounced so typing an
-  // email doesn't fire a request per keystroke.
+  // Live subtotal/discount/tax/fee/total — re-quotes when the cart, method,
+  // email, or coupon changes (email drives any vendor discount; the coupon its
+  // own). Debounced so typing doesn't fire a request per keystroke.
   useEffect(() => {
     if (lines.length === 0) {
       setTotals(null);
@@ -243,7 +248,12 @@ export default function CheckoutForm({
       fetch("/api/order/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines, method, email: email.trim() || undefined }),
+        body: JSON.stringify({
+          lines,
+          method,
+          email: email.trim() || undefined,
+          couponCode: coupon.trim() || undefined,
+        }),
       })
         .then((r) => r.json())
         .then((d) => {
@@ -255,7 +265,7 @@ export default function CheckoutForm({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [lines, method, email]);
+  }, [lines, method, email, coupon]);
 
   useEffect(() => {
     if (placed) window.scrollTo({ top: 0, behavior: "auto" });
@@ -299,6 +309,7 @@ export default function CheckoutForm({
             method,
             address: method === "delivery" ? addr : undefined,
           },
+          couponCode: coupon.trim() || undefined,
           recaptchaToken,
         }),
       });
@@ -673,10 +684,50 @@ export default function CheckoutForm({
               </li>
             ))}
           </ul>
-          <div className="space-y-1.5 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+
+          {/* Coupon code */}
+          <div className="pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+            <label
+              htmlFor="coupon"
+              className="block text-sm mb-1.5"
+              style={{ color: "var(--ash)", fontFamily: "var(--font-fredoka)" }}
+            >
+              Have a coupon code?
+            </label>
+            <input
+              id="coupon"
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+              placeholder="Enter code"
+              aria-label="Coupon code"
+              autoCapitalize="characters"
+              autoComplete="off"
+              className="w-full rounded-xl px-4 py-2.5 outline-none uppercase"
+              style={inputStyle}
+            />
+            {coupon.trim() && totals?.appliedCouponCode && (
+              <p className="mt-1.5 text-sm" style={{ color: "var(--teal-deep)" }}>
+                Code {totals.appliedCouponCode} applied 🎉
+              </p>
+            )}
+            {coupon.trim() && totals?.couponValid === false && (
+              <p className="mt-1.5 text-sm" style={{ color: "var(--magenta-deep)" }}>
+                That code isn’t valid.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5 pt-4 mt-1" style={{ borderTop: "1px solid var(--border)" }}>
             <Row label="Subtotal" value={formatCents(totals?.subtotalCents ?? subtotalCents)} />
             {totals && totals.discountCents > 0 && (
-              <Row label="Vendor discount" value={`-${formatCents(totals.discountCents)}`} />
+              <Row
+                label={
+                  totals.appliedCouponCode
+                    ? `Coupon (${totals.appliedCouponCode})`
+                    : "Vendor discount"
+                }
+                value={`-${formatCents(totals.discountCents)}`}
+              />
             )}
             {method === "delivery" && (
               <Row label="Local delivery" value={totals ? formatCents(totals.feeCents) : "—"} />

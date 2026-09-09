@@ -56,6 +56,9 @@ export async function updateSettings(form: FormData): Promise<void> {
     .where(eq(settings.id, 1));
 
   // Auto-saved — no toast, and don't revalidate the current page (the client
-  // holds the live values). Refresh the storefront so pause/hours/fees apply.
-  revalidatePath("/order");
+  // holds the live values). Refresh the whole storefront so pause/hours/fees
+  // apply everywhere: hours drive the header badge and footer (rendered in the
+  // root layout on every page) plus the home hero and /visit, so revalidating
+  // the root layout busts all of those cached routes — not just /order.
+  revalidatePath("/", "layout");
 }

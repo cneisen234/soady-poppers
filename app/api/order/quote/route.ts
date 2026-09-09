@@ -12,6 +12,7 @@ export async function POST(request: Request) {
       lines?: CheckoutLine[];
       method?: FulfillmentMethod;
       email?: string;
+      couponCode?: string;
     };
     const lines = body.lines ?? [];
     if (lines.length === 0) {
@@ -20,7 +21,12 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const totals = await quoteOrder(lines, body.method ?? "pickup", body.email);
+    const totals = await quoteOrder(
+      lines,
+      body.method ?? "pickup",
+      body.email,
+      body.couponCode,
+    );
     return Response.json({ ok: true, ...totals });
   } catch (err) {
     return Response.json(

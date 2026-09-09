@@ -59,6 +59,9 @@ export const paymentStatus = pgEnum("payment_status", [
   "refunded",
 ]);
 
+// A coupon is either a percent off or a flat dollar amount off the subtotal.
+export const couponKind = pgEnum("coupon_kind", ["percent", "fixed"]);
+
 // ---- Catalog ----
 
 export const categories = pgTable("categories", {
@@ -150,9 +153,13 @@ export const orders = pgTable(
     address: jsonb("address").$type<DeliveryAddress>(),
     note: text("note"),
     subtotalCents: integer("subtotal_cents").notNull(),
-    // Vendor discount applied off the subtotal (0 when none). Snapshotted here so
-    // editing/removing a vendor rate later never rewrites a past receipt.
+    // Discount applied off the subtotal (0 when none) — either a vendor rate or a
+    // coupon. Snapshotted here so editing/removing the source later never rewrites
+    // a past receipt.
     discountCents: integer("discount_cents").notNull().default(0),
+    // The coupon code that produced the discount, snapshotted (null when the
+    // discount came from a vendor rate or there was none).
+    couponCode: text("coupon_code"),
     taxCents: integer("tax_cents").notNull(),
     feeCents: integer("fee_cents").notNull(),
     totalCents: integer("total_cents").notNull(),
@@ -225,6 +232,30 @@ export const vendorDiscounts = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("vendor_discounts_email_key").on(t.email)],
+);
+
+// ---- Coupons ----
+// Promo codes a customer types at checkout for a percent-off. Like vendor
+// discounts, but keyed on a code the customer enters (case-insensitive; stored
+// uppercased) instead of their email, and switchable on/off without deleting.
+export const coupons = pgTable(
+  "coupons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    // "percent" -> discountBps applies; "fixed" -> amountOffCents applies.
+    kind: couponKind("kind").notNull().default("percent"),
+    // Percent-off in basis points off the subtotal (1000 = 10.00%). Used when
+    // kind = "percent" (0 for fixed coupons).
+    discountBps: integer("discount_bps").notNull().default(0),
+    // Flat amount off the subtotal, in cents. Used when kind = "fixed".
+    amountOffCents: integer("amount_off_cents"),
+    active: boolean("active").notNull().default(true),
+    label: text("label"), // optional note, e.g. the promotion's name
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("coupons_code_key").on(t.code)],
 );
 
 // ---- Settings (single row) ----

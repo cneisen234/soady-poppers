@@ -29,6 +29,20 @@
       "when": 1788910139301,
       "tag": "0003_fancy_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788975247270,
+      "tag": "0004_conscious_red_wolf",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788976206950,
+      "tag": "0005_lively_synch",
+      "breakpoints": true
     }
   ]
 }

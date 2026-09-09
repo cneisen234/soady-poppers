@@ -1,5 +1,6 @@
 import OrdersBrowser from "./orders-browser";
 import DiscountsPanel from "../discounts/discounts-panel";
+import CouponsPanel from "../coupons/coupons-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,10 @@ export default function AdminOrdersPage() {
       <p className="admin-sub">
         Active orders to work through, and everything that's finished.
       </p>
-      <OrdersBrowser discountsPanel={<DiscountsPanel />} />
+      <OrdersBrowser
+        discountsPanel={<DiscountsPanel />}
+        couponsPanel={<CouponsPanel />}
+      />
     </>
   );
 }

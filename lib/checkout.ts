@@ -18,6 +18,7 @@ import {
 } from "@/lib/db/schema";
 import { getSettings, deliveryFeeCents, type Settings } from "@/lib/settings";
 import { discountBpsForEmail } from "@/lib/discounts";
+import { couponForCode, normalizeCode, type CouponMatch } from "@/lib/coupons";
 import { notifyNewOrder } from "@/lib/notifications";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
 
@@ -33,6 +34,53 @@ export type OrderTotals = {
   feeCents: number;
   totalCents: number;
 };
+
+/** The discount inputs for an order: the vendor rate (from the email) and any
+ * matched coupon, plus whether an entered code was recognized (null when none
+ * was tried — lets the UI show an "invalid code" hint). The cents are worked out
+ * later from the subtotal, since a coupon may be percent- or dollar-based. */
+type DiscountResolution = {
+  vendorBps: number;
+  coupon: CouponMatch | null;
+  couponValid: boolean | null;
+};
+
+/** Look up the vendor rate (from the email) and any coupon (from the code). */
+async function resolveDiscount(
+  email?: string | null,
+  couponCode?: string | null,
+): Promise<DiscountResolution> {
+  const [vendorBps, coupon] = await Promise.all([
+    discountBpsForEmail(email),
+    couponForCode(couponCode),
+  ]);
+  return {
+    vendorBps,
+    coupon,
+    couponValid: normalizeCode(couponCode) ? coupon != null : null,
+  };
+}
+
+/** The discount off a given subtotal in cents, and the coupon code that produced
+ * it (null when a vendor rate or nothing did). A coupon and a vendor rate don't
+ * stack — the customer gets the better of the two; a tie goes to the coupon
+ * since the customer explicitly entered it. */
+function applyDiscount(
+  subtotal: number,
+  d: DiscountResolution,
+): { discountCents: number; appliedCouponCode: string | null } {
+  const vendorCents = Math.round((subtotal * d.vendorBps) / 10000);
+  const couponCents = d.coupon
+    ? d.coupon.kind === "fixed"
+      ? Math.min(subtotal, d.coupon.amountCents)
+      : Math.round((subtotal * d.coupon.bps) / 10000)
+    : 0;
+  const useCoupon = couponCents > 0 && couponCents >= vendorCents;
+  return {
+    discountCents: Math.min(subtotal, Math.max(vendorCents, couponCents)),
+    appliedCouponCode: useCoupon ? d.coupon!.code : null,
+  };
+}
 
 export type ValidationResult =
   | { ok: true }
@@ -178,13 +226,15 @@ type SnapshotItem = {
   track: boolean;
 };
 
+const NO_DISCOUNT: DiscountResolution = { vendorBps: 0, coupon: null, couponValid: null };
+
 function computeTotals(
   rows: Map<string, LineRow>,
   lines: CheckoutLine[],
   method: FulfillmentMethod,
   s: Settings,
-  discountBps = 0,
-): { totals: OrderTotals; items: SnapshotItem[] } {
+  discount: DiscountResolution = NO_DISCOUNT,
+): { totals: OrderTotals; items: SnapshotItem[]; appliedCouponCode: string | null } {
   let subtotal = 0;
   let tax = 0;
   let itemCount = 0;
@@ -215,29 +265,45 @@ function computeTotals(
     });
   }
 
-  // Vendor discount comes off the merchandise subtotal (not tax or delivery),
-  // clamped so it can never exceed the subtotal.
-  const discountCents = Math.min(subtotal, Math.round((subtotal * discountBps) / 10000));
+  // The discount (vendor rate or coupon) comes off the merchandise subtotal (not
+  // tax or delivery), clamped so it can never exceed the subtotal.
+  const { discountCents, appliedCouponCode } = applyDiscount(subtotal, discount);
   const feeCents = method === "delivery" ? deliveryFeeCents(itemCount, s) : 0;
   const totalCents = subtotal - discountCents + tax + feeCents;
   return {
     totals: { subtotalCents: subtotal, discountCents, taxCents: tax, feeCents, totalCents },
     items,
+    appliedCouponCode,
   };
 }
+
+export type OrderQuote = OrderTotals & {
+  /** The coupon code applied to this quote (null when a vendor rate or nothing
+   * discounted it). */
+  appliedCouponCode: string | null;
+  /** true/false when a coupon code was entered (recognized or not); null when
+   * none was entered — lets the UI show an "invalid code" hint. */
+  couponValid: boolean | null;
+};
 
 /** Preview subtotal/discount/tax/fee/total from the DB (nothing is created). */
 export async function quoteOrder(
   lines: CheckoutLine[],
   method: FulfillmentMethod = "pickup",
   email?: string,
-): Promise<OrderTotals> {
+  couponCode?: string,
+): Promise<OrderQuote> {
   const s = await getSettings();
-  const [rows, discountBps] = await Promise.all([
+  const [rows, discount] = await Promise.all([
     queryLineRows(lines),
-    discountBpsForEmail(email),
+    resolveDiscount(email, couponCode),
   ]);
-  return computeTotals(rows, lines, method, s, discountBps).totals;
+  const { totals, appliedCouponCode } = computeTotals(rows, lines, method, s, discount);
+  return {
+    ...totals,
+    appliedCouponCode,
+    couponValid: discount.couponValid,
+  };
 }
 
 export type PlacedOrder = OrderTotals & {
@@ -256,6 +322,7 @@ export async function placeOrder(
   customer: Customer,
   sourceId: string,
   fulfillment: Fulfillment,
+  couponCode?: string,
 ): Promise<PlacedOrder> {
   const s = await getSettings();
 
@@ -265,11 +332,17 @@ export async function placeOrder(
     throw new SoldOutError(validation.problems, validation.soldOut, validation.paused);
   }
 
-  const [rows, discountBps] = await Promise.all([
+  const [rows, discount] = await Promise.all([
     queryLineRows(lines),
-    discountBpsForEmail(customer.email),
+    resolveDiscount(customer.email, couponCode),
   ]);
-  const { totals, items } = computeTotals(rows, lines, fulfillment.method, s, discountBps);
+  const { totals, items, appliedCouponCode } = computeTotals(
+    rows,
+    lines,
+    fulfillment.method,
+    s,
+    discount,
+  );
   if (totals.totalCents <= 0) throw new Error("Order total is invalid.");
 
   // Charge — Square Payments only (amount computed by us).
@@ -300,6 +373,7 @@ export async function placeOrder(
         note: customer.note || null,
         subtotalCents: totals.subtotalCents,
         discountCents: totals.discountCents,
+        couponCode: appliedCouponCode,
         taxCents: totals.taxCents,
         feeCents: totals.feeCents,
         totalCents: totals.totalCents,
@@ -350,6 +424,7 @@ export async function placeOrder(
     customerPhone: customer.phone || undefined,
     address: fulfillment.method === "delivery" ? fulfillment.address : undefined,
     note: customer.note || undefined,
+    couponCode: appliedCouponCode || undefined,
     lines: items.map((it) => ({
       name: `${it.productName} (${it.variationName})`,
       qty: it.qty,

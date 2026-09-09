@@ -16,9 +16,15 @@ type Row = {
   status: string;
 };
 
-type Tab = "active" | "completed" | "discounts";
+type Tab = "active" | "completed" | "discounts" | "coupons";
 
-export default function OrdersBrowser({ discountsPanel }: { discountsPanel: ReactNode }) {
+export default function OrdersBrowser({
+  discountsPanel,
+  couponsPanel,
+}: {
+  discountsPanel: ReactNode;
+  couponsPanel: ReactNode;
+}) {
   const [tab, setTab] = useState<Tab>("active");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -67,9 +73,9 @@ export default function OrdersBrowser({ discountsPanel }: { discountsPanel: Reac
   );
 
   // Refetch from the top whenever the tab / filters / sort change.
-  // The Discounts tab isn't order data, so it never fetches.
+  // The Discounts and Coupons tabs aren't order data, so they never fetch.
   useEffect(() => {
-    if (tab !== "discounts") load(true);
+    if (tab !== "discounts" && tab !== "coupons") load(true);
   }, [load, tab]);
 
   return (
@@ -96,10 +102,19 @@ export default function OrdersBrowser({ discountsPanel }: { discountsPanel: Reac
         >
           Discounts
         </button>
+        <button
+          type="button"
+          className={`admin-tab ${tab === "coupons" ? "active" : ""}`}
+          onClick={() => setTab("coupons")}
+        >
+          Coupons
+        </button>
       </div>
 
       {tab === "discounts" ? (
         discountsPanel
+      ) : tab === "coupons" ? (
+        couponsPanel
       ) : (
       <>
       <div className="admin-filters">
@@ -160,9 +175,16 @@ export default function OrdersBrowser({ discountsPanel }: { discountsPanel: Reac
             {rows.map((o) => (
               <tr key={o.id}>
                 <td data-label="Order">
-                  <Link href={`/admin/orders/${o.id}`} className="admin-link">
-                    #{o.shortId}
-                  </Link>
+                  <div className="admin-order-cell">
+                    <span className="admin-order-id">#{o.shortId}</span>
+                    <Link
+                      href={`/admin/orders/${o.id}`}
+                      className="admin-btn sm"
+                      aria-label={`Open order #${o.shortId}`}
+                    >
+                      Open
+                    </Link>
+                  </div>
                 </td>
                 <td data-label="Placed">{formatOrderTime(o.createdAt)}</td>
                 <td data-label="Customer">{o.customerName}</td>

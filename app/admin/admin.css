@@ -470,6 +470,76 @@ textarea.admin-input { resize: vertical; }
   display: flex;
   min-width: 0;
 }
+/* Keep the fixed controls in a list row (e.g. the % rate select) from stretching
+   to width:100% and starving the flex:1 main field. */
+.admin-list-row > select.admin-input { width: auto; flex: 0 0 auto; }
+
+/* Small on/off toggle used in the coupon rows. */
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ash);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.admin-toggle input { cursor: pointer; accent-color: var(--magenta, #e8308a); }
+
+/* Orders list — the order id sits as plain text next to its "Open" button, so
+   the id no longer has to be the click target. */
+.admin-order-cell { display: inline-flex; align-items: center; gap: 10px; }
+.admin-order-id { font-weight: 600; color: var(--charcoal); white-space: nowrap; }
+
+/* Segmented %/$ toggle — same height as .admin-input so it lines up in a row. */
+.admin-seg {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 2px solid var(--charcoal);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.admin-seg button {
+  border: 0;
+  background: var(--cream);
+  color: var(--charcoal);
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.admin-seg button + button { border-left: 2px solid var(--charcoal); }
+.admin-seg button.active { background: var(--magenta, #e8308a); color: #fff; }
+
+/* Coupon rows have too many controls for one line, so each coupon is laid out on
+   two lines: the code on top, the discount config (type · value) below. */
+.admin-coupon-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.admin-coupon-row:first-of-type { padding-top: 0; }
+.admin-coupon-line { display: flex; align-items: center; gap: 10px; }
+.admin-coupon-line .admin-list-main { flex: 1; }
+/* Content-size the type/value controls so they don't stretch to full width. */
+.admin-coupon-line > select.admin-input { width: auto; flex: 0 0 auto; }
+.admin-coupon-line > .admin-input.w-16 { width: 6rem; flex: 0 0 auto; }
+/* Push the value control to sit right after the toggle, not spread out. */
+.admin-coupon-line .admin-coupon-spacer { margin-left: auto; }
+
+/* Coupon add form: same two-line shape as a row. */
+.admin-coupon-add {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 2px solid var(--border);
+}
 .admin-list-main .admin-input {
   width: 100%;
 }

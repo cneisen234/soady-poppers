@@ -19,6 +19,7 @@ export type OrderNotice = {
   customerPhone?: string;
   address?: { line1: string; line2?: string; city: string; state: string; zip: string };
   note?: string;
+  couponCode?: string;
   lines: { name: string; qty: number; totalCents: number }[];
   subtotalCents: number;
   discountCents: number;
@@ -28,6 +29,10 @@ export type OrderNotice = {
 };
 function methodLabel(m: FulfillmentMethod): string {
   return m === "delivery" ? "Local delivery" : m === "shipping" ? "Shipping" : "Pickup";
+}
+/** Label for the discount line — names the coupon when one was used. */
+function discountLabel(n: OrderNotice): string {
+  return n.couponCode ? `Coupon (${n.couponCode})` : "Vendor discount";
 }
 
 // ---- Low-level SendGrid send ----
@@ -81,7 +86,7 @@ function itemRowsHtml(n: OrderNotice): string {
 function totalsRowsHtml(n: OrderNotice): string {
   const discount =
     n.discountCents > 0
-      ? `<tr><td style="padding:2px 0;color:#256E3A;">Vendor discount</td><td style="padding:2px 0;text-align:right;color:#256E3A;">-${formatCents(n.discountCents)}</td></tr>`
+      ? `<tr><td style="padding:2px 0;color:#256E3A;">${discountLabel(n)}</td><td style="padding:2px 0;text-align:right;color:#256E3A;">-${formatCents(n.discountCents)}</td></tr>`
       : "";
   const fee =
     n.feeCents > 0
@@ -129,7 +134,7 @@ ${contact.join("\n")}
 
 ${itemLinesText(n)}
 
-Subtotal: ${formatCents(n.subtotalCents)}${n.discountCents > 0 ? `\nVendor discount: -${formatCents(n.discountCents)}` : ""}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
+Subtotal: ${formatCents(n.subtotalCents)}${n.discountCents > 0 ? `\n${discountLabel(n)}: -${formatCents(n.discountCents)}` : ""}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
 Tax: ${formatCents(n.taxCents)}
 Total: ${formatCents(n.totalCents)}`;
 
@@ -165,7 +170,7 @@ Order #${n.shortId} — ${methodLabel(n.method)}
 
 ${itemLinesText(n)}
 
-Subtotal: ${formatCents(n.subtotalCents)}${n.discountCents > 0 ? `\nVendor discount: -${formatCents(n.discountCents)}` : ""}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
+Subtotal: ${formatCents(n.subtotalCents)}${n.discountCents > 0 ? `\n${discountLabel(n)}: -${formatCents(n.discountCents)}` : ""}${n.feeCents > 0 ? `\nLocal delivery: ${formatCents(n.feeCents)}` : ""}
 Tax: ${formatCents(n.taxCents)}
 Total: ${formatCents(n.totalCents)}
 

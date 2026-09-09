@@ -20,6 +20,7 @@ type Body = {
   customer?: Customer;
   sourceId?: string;
   fulfillment?: Fulfillment;
+  couponCode?: string;
   recaptchaToken?: string;
 };
 
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await placeOrder(lines, customer, sourceId, fulfillment);
+    const result = await placeOrder(lines, customer, sourceId, fulfillment, body.couponCode);
     return Response.json({ ok: true, ...result });
   } catch (err) {
     // Inventory changed between cart and charge — nothing was charged.

@@ -153,7 +153,9 @@ export default async function OrderDetailPage({
           </li>
           {order.discountCents > 0 && (
             <li>
-              <span className="k">Vendor discount</span>
+              <span className="k">
+                {order.couponCode ? `Coupon (${order.couponCode})` : "Vendor discount"}
+              </span>
               <span className="v admin-num">-{formatCents(order.discountCents)}</span>
             </li>
           )}
