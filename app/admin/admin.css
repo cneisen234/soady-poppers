@@ -1017,6 +1017,7 @@ textarea.admin-input { resize: vertical; }
     flex-direction: column;
     align-items: stretch;
   }
+  .admin-filters .admin-search,
   .admin-filters input[type="search"],
   .admin-filters select.admin-input {
     width: 100%;

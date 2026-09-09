@@ -1,6 +1,7 @@
-import { count } from "drizzle-orm";
+import { count, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { products, categories, orders, settings } from "@/lib/db/schema";
+import { ACTIVE_STATUSES } from "@/lib/order-status";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,10 @@ export default async function AdminDashboard() {
   const [prod, cat, ord, setting] = await Promise.all([
     db.select({ c: count() }).from(products),
     db.select({ c: count() }).from(categories),
-    db.select({ c: count() }).from(orders),
+    db
+      .select({ c: count() })
+      .from(orders)
+      .where(inArray(orders.status, [...ACTIVE_STATUSES])),
     db.select().from(settings).limit(1),
   ]);
 
