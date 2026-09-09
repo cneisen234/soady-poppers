@@ -273,6 +273,9 @@ h1, h2, h3, h4, h5, h6 {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Suppress the native search "clear" X — we render our own branded button. */
+.no-native-clear::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
 /* Subtle dotted texture — the fizzy-bubble vibe */
 .dot-texture {
   background-image: radial-gradient(var(--pink) 1.4px, transparent 1.4px);

@@ -193,9 +193,20 @@ export default function Storefront({
                 placeholder="Search drinks…"
                 aria-label="Search drinks"
                 // text-base (16px) on mobile stops iOS from zooming in on focus.
-                className="w-full rounded-full pl-9 pr-4 py-2 text-base sm:text-sm outline-none"
+                className="no-native-clear w-full rounded-full pl-9 pr-10 py-2 text-base sm:text-sm outline-none"
                 style={inputStyle}
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 grid place-items-center rounded-full w-6 h-6 text-sm leading-none"
+                  style={{ color: "var(--charcoal)", backgroundColor: "var(--border)" }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             {/* Sort — desktop position (row 1, right) */}
