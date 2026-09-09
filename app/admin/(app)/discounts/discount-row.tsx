@@ -5,6 +5,7 @@ import { updateDiscount, deleteDiscount } from "./actions";
 import ConfirmDelete from "../confirm-delete";
 import { TrashIcon } from "../icons";
 import { useAutosave, SaveStatus } from "../autosave";
+import { PERCENT_OPTIONS } from "./constants";
 
 export default function DiscountRow({
   id,
@@ -43,18 +44,22 @@ export default function DiscountRow({
           onChange={(e) => update("email", e.target.value)}
         />
       </div>
-      <div className="admin-rate">
-        <input
-          className="admin-input sm w-24"
-          type="number"
-          step="0.01"
-          min="0"
-          aria-label="Discount percent"
-          value={f.ratePercent}
-          onChange={(e) => update("ratePercent", e.target.value)}
-        />
-        <span className="admin-rate-suffix">%</span>
-      </div>
+      <select
+        className="admin-input sm"
+        aria-label="Discount percent"
+        value={f.ratePercent}
+        onChange={(e) => update("ratePercent", e.target.value)}
+      >
+        {/* Keep any legacy non-multiple-of-5 rate selectable. */}
+        {f.ratePercent !== "" && !PERCENT_OPTIONS.map(String).includes(f.ratePercent) && (
+          <option value={f.ratePercent}>{f.ratePercent}%</option>
+        )}
+        {PERCENT_OPTIONS.map((n) => (
+          <option key={n} value={n}>
+            {n}%
+          </option>
+        ))}
+      </select>
       <SaveStatus status={status} />
       <ConfirmDelete
         action={deleteDiscount}

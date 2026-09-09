@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { vendorDiscounts } from "@/lib/db/schema";
 import { createDiscount } from "./actions";
 import DiscountRow from "./discount-row";
+import { PERCENT_OPTIONS } from "./constants";
 
 // Vendor-discount management, rendered as a section on the Orders page.
 export default async function DiscountsPanel() {
@@ -43,15 +44,16 @@ export default async function DiscountsPanel() {
             required
           />
           <div className="admin-discount-add-row">
-            <input
-              name="ratePercent"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="% off"
-              className="admin-input sm w-24"
-              required
-            />
+            <select name="ratePercent" required defaultValue="" className="admin-input sm">
+              <option value="" disabled>
+                % off
+              </option>
+              {PERCENT_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n}%
+                </option>
+              ))}
+            </select>
             <button type="submit" className="admin-btn">
               + Add discount
             </button>
