@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CartProvider } from "./CartProvider";
 import ProductCard from "./ProductCard";
 import CartDrawer from "./CartDrawer";
@@ -46,6 +46,18 @@ export default function Storefront({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("featured");
+
+  // When the shopper searches / filters / sorts, the results list changes height
+  // and the page can leave them stranded near the (now higher) footer. Jump back
+  // to the top so they see results from the start. Skip the initial mount.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [search, category, sort]);
 
   const q = search.trim().toLowerCase();
   const pristine = category === "all" && q === "" && sort === "featured";
