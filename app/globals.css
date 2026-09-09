@@ -276,6 +276,17 @@ h1, h2, h3, h4, h5, h6 {
 /* Suppress the native search "clear" X — we render our own branded button. */
 .no-native-clear::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 
+/* iOS Safari zooms the page in whenever a focused form control's font-size is
+   under 16px. On touch devices, force every control to 16px so focusing a field
+   never triggers that zoom. Desktop (fine pointer) keeps its denser sizing. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Subtle dotted texture — the fizzy-bubble vibe */
 .dot-texture {
   background-image: radial-gradient(var(--pink) 1.4px, transparent 1.4px);

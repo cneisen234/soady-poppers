@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { statusLabel, statusTagClass } from "@/lib/order-status";
 import { formatCents } from "@/lib/money";
@@ -16,10 +16,10 @@ type Row = {
   status: string;
 };
 
-type Scope = "active" | "completed";
+type Tab = "active" | "completed" | "discounts";
 
-export default function OrdersBrowser() {
-  const [tab, setTab] = useState<Scope>("active");
+export default function OrdersBrowser({ discountsPanel }: { discountsPanel: ReactNode }) {
+  const [tab, setTab] = useState<Tab>("active");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [method, setMethod] = useState("all");
@@ -67,9 +67,10 @@ export default function OrdersBrowser() {
   );
 
   // Refetch from the top whenever the tab / filters / sort change.
+  // The Discounts tab isn't order data, so it never fetches.
   useEffect(() => {
-    load(true);
-  }, [load]);
+    if (tab !== "discounts") load(true);
+  }, [load, tab]);
 
   return (
     <>
@@ -88,17 +89,40 @@ export default function OrdersBrowser() {
         >
           Completed
         </button>
+        <button
+          type="button"
+          className={`admin-tab ${tab === "discounts" ? "active" : ""}`}
+          onClick={() => setTab("discounts")}
+        >
+          Discounts
+        </button>
       </div>
 
+      {tab === "discounts" ? (
+        discountsPanel
+      ) : (
+      <>
       <div className="admin-filters">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search order # or name…"
-          className="admin-input sm"
-          aria-label="Search orders"
-        />
+        <div className="admin-search">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search order # or name…"
+            className="admin-input sm no-native-clear"
+            aria-label="Search orders"
+          />
+          {q && (
+            <button
+              type="button"
+              className="admin-search-clear"
+              aria-label="Clear search"
+              onClick={() => setQ("")}
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <select
           value={method}
           onChange={(e) => setMethod(e.target.value)}
@@ -184,6 +208,8 @@ export default function OrdersBrowser() {
             {loadingMore ? "Loading…" : "Load more"}
           </button>
         </div>
+      )}
+      </>
       )}
     </>
   );

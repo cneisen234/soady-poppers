@@ -10,8 +10,7 @@ export default function AdminOrdersPage() {
       <p className="admin-sub">
         Active orders to work through, and everything that's finished.
       </p>
-      <OrdersBrowser />
-      <DiscountsPanel />
+      <OrdersBrowser discountsPanel={<DiscountsPanel />} />
     </>
   );
 }

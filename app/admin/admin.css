@@ -977,6 +977,37 @@ textarea.admin-input { resize: vertical; }
   flex: 1;
   min-width: 220px;
 }
+/* Search field wrapper with a branded clear (✕) button */
+.admin-search {
+  position: relative;
+  display: flex;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.admin-search .admin-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding-right: 30px;
+}
+.admin-search-clear {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--charcoal);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
 .admin-filters select.admin-input {
   width: auto;
   flex: 0 0 auto;

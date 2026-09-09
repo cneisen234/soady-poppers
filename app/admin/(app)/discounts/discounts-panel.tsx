@@ -12,7 +12,7 @@ export default async function DiscountsPanel() {
     .orderBy(asc(vendorDiscounts.email));
 
   return (
-    <section style={{ marginTop: 40 }}>
+    <section>
       <h2 className="admin-h2">Vendor discounts</h2>
       <p className="admin-sub" style={{ marginBottom: 16 }}>
         Customers whose checkout email matches one of these get the listed percent off the
