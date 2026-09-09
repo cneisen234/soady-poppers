@@ -6,7 +6,7 @@ import { useCart } from "./CartProvider";
 
 // A single drink: photo (or branded placeholder), name, description, a size
 // selector when there's more than one variation, price, and add-to-cart.
-// Sold-out state is driven by the `available` flags from Square (Step 2).
+// Sold-out state is driven by the `available` flags from Square.
 
 function Placeholder() {
   // No photo yet — a soft branded tile with a soda-cup icon.

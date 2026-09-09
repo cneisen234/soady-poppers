@@ -1,10 +1,6 @@
 // Drizzle database client — server-only. The whole app talks to Postgres through
 // this one `db` export so connection setup lives in exactly one place.
 //
-// Driver: Neon's serverless Pool (Vercel Postgres is Neon under the hood). We use
-// the WebSocket pool rather than the HTTP driver so interactive transactions work
-// — checkout (Step 5) needs to write an order + its items + the payment atomically.
-//
 // Pooling: point DATABASE_URL at Neon's POOLED connection string (the `-pooler`
 // host). Serverless functions spin up many short-lived instances, and a pooled
 // URL keeps them from exhausting Postgres connections. Migrations use the direct

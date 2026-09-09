@@ -266,7 +266,7 @@
   box-shadow: none;
 }
 
-/* ===== Item management (Step 4) ===== */
+/* ===== Item management ===== */
 .admin-row-between {
   display: flex;
   justify-content: space-between;

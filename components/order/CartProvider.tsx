@@ -2,7 +2,7 @@
 
 // Client-side cart: React context backed by localStorage so a cart survives
 // reloads. Keyed by Square variation id (each size is its own line). This is the
-// single source of cart truth the storefront and (Step 4) checkout both read.
+// single source of cart truth the storefront and checkout both read.
 
 import {
   createContext,

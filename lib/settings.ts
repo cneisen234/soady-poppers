@@ -1,5 +1,4 @@
-// Shop settings — read from the singleton `settings` row (seeded in Step 1,
-// editable from the admin in Step 6). Server-only; cached per request.
+// Shop settings
 
 import "server-only";
 import { cache } from "react";
