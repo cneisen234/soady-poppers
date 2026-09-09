@@ -1,4 +1,4 @@
-// Sandbox connectivity check for Step 1.
+// Sandbox connectivity
 //
 // GET /api/square/health
 //   - Reports which credentials are present (without leaking them).

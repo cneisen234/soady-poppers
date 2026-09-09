@@ -6,7 +6,6 @@ import { useCart } from "./CartProvider";
 import { formatCents } from "@/lib/money";
 
 // Floating cart button + slide-over drawer. Checkout routes to /order/checkout,
-// which is built in Step 4 (a stub for now so the flow is navigable).
 
 export default function CartDrawer({ ordering }: { ordering: boolean }) {
   const { items, count, subtotalCents, setQty, remove } = useCart();

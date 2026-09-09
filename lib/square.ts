@@ -1,9 +1,5 @@
 // Square API client — single source of truth for talking to Square.
 //
-// Environment is driven entirely by env vars (see .env.example), so going live
-// in Step 7 is just flipping SQUARE_ENV to "production" and pasting the client's
-// production credentials — no code changes.
-//
 // This module is server-only. Never import it into a Client Component; the
 // access token must not reach the browser.
 

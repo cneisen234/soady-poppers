@@ -38,13 +38,6 @@ export default async function AdminDashboard() {
           <div className="l">Orders</div>
         </div>
       </div>
-
-      <div className="admin-card">
-        <p className="admin-stub" style={{ margin: 0 }}>
-          Item management arrives in Step 4, order management and settings in Step 6.
-          The counts above read live from Postgres — auth and the shell are working.
-        </p>
-      </div>
     </>
   );
 }
