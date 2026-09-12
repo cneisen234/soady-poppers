@@ -15,6 +15,13 @@ export type Settings = {
   deliveryFlatCents: number;
   deliveryFlatMinItems: number;
   deliveryFreeMinItems: number;
+  // Custom drink builder + add-on pricing (see schema for meaning).
+  customFreeSyrups: number;
+  customMaxSyrups: number;
+  addonSyrupCents: number;
+  addonCaffeineCents: number;
+  addonElectrolyteCents: number;
+  addonMilkCents: number;
   hours: WeekHours;
 };
 
@@ -44,6 +51,12 @@ const DEFAULTS: Settings = {
   deliveryFlatCents: 500,
   deliveryFlatMinItems: 5,
   deliveryFreeMinItems: 10,
+  customFreeSyrups: 2,
+  customMaxSyrups: 5,
+  addonSyrupCents: 50,
+  addonCaffeineCents: 100,
+  addonElectrolyteCents: 100,
+  addonMilkCents: 50,
   hours: DEFAULT_HOURS,
 };
 
@@ -58,6 +71,12 @@ export const getSettings = cache(async (): Promise<Settings> => {
     deliveryFlatCents: row.deliveryFlatCents,
     deliveryFlatMinItems: row.deliveryFlatMinItems,
     deliveryFreeMinItems: row.deliveryFreeMinItems,
+    customFreeSyrups: row.customFreeSyrups,
+    customMaxSyrups: row.customMaxSyrups,
+    addonSyrupCents: row.addonSyrupCents,
+    addonCaffeineCents: row.addonCaffeineCents,
+    addonElectrolyteCents: row.addonElectrolyteCents,
+    addonMilkCents: row.addonMilkCents,
     hours: coerceHours(row.hours),
   };
 });

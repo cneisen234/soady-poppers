@@ -10,6 +10,7 @@
 
 import { sql, relations } from "drizzle-orm";
 import type { WeekHours } from "@/lib/status";
+import type { ProductRecipe } from "@/lib/custom-drink-types";
 import {
   pgTable,
   pgEnum,
@@ -67,6 +68,10 @@ export const couponKind = pgEnum("coupon_kind", ["percent", "fixed"]);
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // The custom-drink base(s) for this category — items here are built on it.
+  // Empty = not a customizable category (e.g. lattes). 1 = fixed base for all its
+  // items; 2+ = the customer picks one first (Main Character Energy, Signature).
+  baseIds: jsonb("base_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   sort: integer("sort").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -84,6 +89,14 @@ export const products = pgTable(
     // Owner-facing controls:
     available: boolean("available").notNull().default(true), // pause an item
     hidden: boolean("hidden").notNull().default(false), // hide from storefront
+    // The single seeded "Custom Drink" product. Its variations are the custom
+    // drink's sizes/prices; managed in Settings → Custom Drink, not the item list,
+    // and rendered on the storefront as the build-your-own wizard.
+    isCustom: boolean("is_custom").notNull().default(false),
+    // Structured recipe (base + syrups + toppings) for a customizable menu drink.
+    // Null = not customizable (shows plain "Add", e.g. lattes). Drives the
+    // "Customize" wizard, pre-filled with these ingredients.
+    recipe: jsonb("recipe").$type<ProductRecipe>(),
     // Tax override: null = inherit the global settings rate, 0 = exempt,
     // any other value = a custom rate in basis points for this product.
     taxRateBps: integer("tax_rate_bps"),
@@ -187,6 +200,9 @@ export const orderItems = pgTable(
     // Snapshots — frozen at purchase time:
     productName: text("product_name").notNull(),
     variationName: text("variation_name").notNull(),
+    // For a custom drink: the built-to-order recipe the shop reads (base, flavors,
+    // add-ons). Null for normal items. Server-built at checkout, never trusted.
+    customSummary: text("custom_summary"),
     unitPriceCents: integer("unit_price_cents").notNull(),
     qty: integer("qty").notNull(),
     lineTotalCents: integer("line_total_cents").notNull(),
@@ -258,6 +274,53 @@ export const coupons = pgTable(
   (t) => [uniqueIndex("coupons_code_key").on(t.code)],
 );
 
+// ---- Custom drink builder option pools ----
+// The bases, syrups, and milk options a customer can pick in the custom-drink
+// wizard. Curated as separate lists in the admin (Settings → Custom Drink). The
+// pricing rules for them live on the settings row (addon*/custom* columns).
+
+export const customBases = pgTable("custom_bases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  // Like syrups: a base is offered regular and/or sugar-free. The drink-level
+  // sugar-free choice filters the base list to the matching variant.
+  availableRegular: boolean("available_regular").notNull().default(true),
+  availableSugarFree: boolean("available_sugar_free").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const customSyrups = pgTable("custom_syrups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  // One row per flavor, offered regular and/or sugar-free (like a size, limited to
+  // those two). The customer picks regular or sugar-free at checkout.
+  availableRegular: boolean("available_regular").notNull().default(true),
+  availableSugarFree: boolean("available_sugar_free").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const customMilks = pgTable("custom_milks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Creams & toppings (cold foam, cream, cereal topping, …) — included free on a
+// recipe; a customer can add/swap them in the wizard at no charge.
+export const customToppings = pgTable("custom_toppings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---- Settings (single row) ----
 
 export const settings = pgTable(
@@ -277,6 +340,21 @@ export const settings = pgTable(
     deliveryFlatCents: integer("delivery_flat_cents").notNull().default(500),
     deliveryFlatMinItems: integer("delivery_flat_min_items").notNull().default(5),
     deliveryFreeMinItems: integer("delivery_free_min_items").notNull().default(10),
+    // Custom drink builder + add-on pricing. (The custom drink's base price comes
+    // from its size/variation, like any product — not from here.)
+    //   customFreeSyrups       -> syrups included before the per-syrup fee starts
+    //   customMaxSyrups        -> hard cap on syrups in a custom drink
+    //   addonSyrupCents        -> price per extra syrup (custom beyond free, and on
+    //                             predefined drinks)
+    //   addonCaffeineCents     -> caffeine add-on (always charged, any drink)
+    //   addonElectrolyteCents  -> electrolyte add-on (always charged, any drink)
+    //   addonMilkCents         -> milk alternative (oat / coconut)
+    customFreeSyrups: integer("custom_free_syrups").notNull().default(2),
+    customMaxSyrups: integer("custom_max_syrups").notNull().default(5),
+    addonSyrupCents: integer("addon_syrup_cents").notNull().default(50),
+    addonCaffeineCents: integer("addon_caffeine_cents").notNull().default(100),
+    addonElectrolyteCents: integer("addon_electrolyte_cents").notNull().default(100),
+    addonMilkCents: integer("addon_milk_cents").notNull().default(50),
     hours: jsonb("hours").$type<WeekHours>(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

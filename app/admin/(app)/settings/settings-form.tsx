@@ -46,6 +46,7 @@ function timeStr(dec: number): string {
 }
 
 export default function SettingsForm({ settings }: { settings: SettingsLite }) {
+  const [tab, setTab] = useState<"general" | "hours">("general");
   const [f, setF] = useState<Fields>(() => {
     const days: Record<number, DayState> = {};
     for (const [d] of DAY_LIST) {
@@ -116,6 +117,25 @@ export default function SettingsForm({ settings }: { settings: SettingsLite }) {
         <SaveStatus status={status} />
       </div>
 
+      <div className="admin-tabs">
+        <button
+          type="button"
+          className={`admin-tab ${tab === "general" ? "active" : ""}`}
+          onClick={() => setTab("general")}
+        >
+          General
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${tab === "hours" ? "active" : ""}`}
+          onClick={() => setTab("hours")}
+        >
+          Hours
+        </button>
+      </div>
+
+      {tab === "general" && (
+        <>
       <fieldset className="admin-fieldset">
         <legend>Online ordering</legend>
         <label className="admin-check">
@@ -206,7 +226,11 @@ export default function SettingsForm({ settings }: { settings: SettingsLite }) {
           flat fee. {freeMinN}+ items: free.
         </p>
       </fieldset>
+        </>
+      )}
 
+
+      {tab === "hours" && (
       <fieldset className="admin-fieldset">
         <legend>Hours</legend>
         <div className="admin-hours">
@@ -247,6 +271,7 @@ export default function SettingsForm({ settings }: { settings: SettingsLite }) {
           })}
         </div>
       </fieldset>
+      )}
     </div>
   );
 }

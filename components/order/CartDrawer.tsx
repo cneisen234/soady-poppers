@@ -80,7 +80,7 @@ export default function CartDrawer({ ordering }: { ordering: boolean }) {
           ) : (
             <ul className="space-y-4">
               {items.map((i) => (
-                <li key={i.variationId} className="flex gap-3">
+                <li key={i.lineId} className="flex gap-3">
                   <div className="flex-1">
                     <p
                       className="font-semibold"
@@ -91,6 +91,11 @@ export default function CartDrawer({ ordering }: { ordering: boolean }) {
                     <p className="text-xs" style={{ color: "var(--stone)" }}>
                       {i.variationName} · {formatCents(i.priceCents)}
                     </p>
+                    {i.customSummary && (
+                      <p className="text-xs mt-0.5 leading-snug" style={{ color: "var(--ash)" }}>
+                        {i.customSummary}
+                      </p>
+                    )}
                     <div className="mt-1.5 flex items-center gap-2">
                       <div
                         className="inline-flex items-center rounded-full"
@@ -98,7 +103,7 @@ export default function CartDrawer({ ordering }: { ordering: boolean }) {
                       >
                         <button
                           type="button"
-                          onClick={() => setQty(i.variationId, i.qty - 1)}
+                          onClick={() => setQty(i.lineId, i.qty - 1)}
                           className="px-2.5 py-0.5 text-sm"
                           aria-label="Decrease quantity"
                         >
@@ -107,7 +112,7 @@ export default function CartDrawer({ ordering }: { ordering: boolean }) {
                         <span className="px-2 text-sm font-semibold">{i.qty}</span>
                         <button
                           type="button"
-                          onClick={() => setQty(i.variationId, i.qty + 1)}
+                          onClick={() => setQty(i.lineId, i.qty + 1)}
                           className="px-2.5 py-0.5 text-sm"
                           aria-label="Increase quantity"
                         >
@@ -116,7 +121,7 @@ export default function CartDrawer({ ordering }: { ordering: boolean }) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => remove(i.variationId)}
+                        onClick={() => remove(i.lineId)}
                         className="text-xs underline"
                         style={{ color: "var(--stone)" }}
                       >

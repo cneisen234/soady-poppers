@@ -5,13 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CartProvider } from "./CartProvider";
 import ProductCard from "./ProductCard";
 import CartDrawer from "./CartDrawer";
+import CustomDrinkWizard from "./CustomDrinkWizard";
 import type { Catalog, Product } from "@/lib/catalog";
+import type { CustomDrinkData, CustomPrefill } from "@/lib/custom-drink-types";
 
 export type StorefrontProps = {
   catalog: Catalog;
   ordering: boolean;
   pausedMessage?: string;
   closedNote?: string;
+  customDrink: CustomDrinkData | null;
 };
 
 type SortKey = "featured" | "name-asc" | "name-desc" | "price-asc" | "price-desc";
@@ -42,10 +45,48 @@ export default function Storefront({
   ordering,
   pausedMessage,
   closedNote,
+  customDrink,
 }: StorefrontProps) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("featured");
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [prefill, setPrefill] = useState<CustomPrefill | null>(null);
+
+  // Category → its customizable bases, for pre-filling the wizard from an item.
+  const baseIdsByCategory = useMemo(
+    () => new Map(catalog.categories.map((c) => [c.id, c.baseIds])),
+    [catalog.categories],
+  );
+
+  // A predefined item can be customized when it has a recipe AND its category has
+  // at least one base (the wizard inherits the base from the category).
+  function customizeFor(p: Product): CustomPrefill | null {
+    if (!p.recipe) return null;
+    const baseIds = (p.categoryId && baseIdsByCategory.get(p.categoryId)) || [];
+    if (baseIds.length === 0) return null;
+    return {
+      productId: p.id,
+      productName: p.name,
+      baseIds,
+      syrupIds: p.recipe.syrupIds,
+      toppingIds: p.recipe.toppingIds,
+    };
+  }
+
+  // Renders a card, wiring up "Customize" only when the item + category support it
+  // and the builder is available.
+  function renderCard(p: Product) {
+    const pf = customDrink ? customizeFor(p) : null;
+    return (
+      <ProductCard
+        key={p.id}
+        product={p}
+        ordering={ordering}
+        onCustomize={pf ? () => setPrefill(pf) : undefined}
+      />
+    );
+  }
 
   // When the shopper searches / filters / sorts, the results list changes height
   // and the page can leave them stranded near the (now higher) footer. Jump back
@@ -305,6 +346,32 @@ export default function Storefront({
 
       {/* Results */}
       <div className="container mx-auto px-4 py-10">
+        {/* Build-your-own entry — distinct from the predefined drinks. */}
+        {customDrink && (
+          <button
+            type="button"
+            onClick={() => setWizardOpen(true)}
+            className="card-pop w-full mb-8 p-5 flex flex-col sm:flex-row sm:items-center gap-4 text-left"
+            style={{ background: "linear-gradient(135deg, var(--pink-soft), var(--lemon-soft))" }}
+          >
+            <span className="text-4xl" aria-hidden>
+              🥤
+            </span>
+            <span className="flex-1">
+              <span
+                className="block text-xl sm:text-2xl"
+                style={{ fontFamily: "var(--font-fredoka)", color: "var(--charcoal)" }}
+              >
+                Build Your Own
+              </span>
+              <span className="block text-sm" style={{ color: "var(--ash)" }}>
+                Pick your base, flavors, sugar-free option &amp; add-ons.
+              </span>
+            </span>
+            <span className="btn-pop text-sm self-start sm:self-auto">Start building →</span>
+          </button>
+        )}
+
         {pristine ? (
           <div className="space-y-14">
             {byCategory.map((cat) =>
@@ -312,9 +379,7 @@ export default function Storefront({
                 <section key={cat.id} className="scroll-mt-40">
                   <h2 className="text-3xl md:text-4xl mb-6">{cat.name}</h2>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {cat.products.map((p) => (
-                      <ProductCard key={p.id} product={p} ordering={ordering} />
-                    ))}
+                    {cat.products.map(renderCard)}
                   </div>
                 </section>
               ),
@@ -335,15 +400,25 @@ export default function Storefront({
               {results.length} {results.length === 1 ? "drink" : "drinks"}
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {results.map((p) => (
-                <ProductCard key={p.id} product={p} ordering={ordering} />
-              ))}
+              {results.map(renderCard)}
             </div>
           </>
         )}
       </div>
 
       <CartDrawer ordering={ordering} />
+
+      {wizardOpen && customDrink && (
+        <CustomDrinkWizard data={customDrink} onClose={() => setWizardOpen(false)} />
+      )}
+
+      {prefill && customDrink && (
+        <CustomDrinkWizard
+          data={customDrink}
+          prefill={prefill}
+          onClose={() => setPrefill(null)}
+        />
+      )}
     </CartProvider>
   );
 }

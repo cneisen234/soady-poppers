@@ -9,7 +9,25 @@ import { products, variations, productImages, categories } from "@/lib/db/schema
 import { requireAdmin } from "@/lib/auth/dal";
 import { dollarsToCents } from "@/lib/money";
 import { field, bool } from "@/lib/form";
+import type { ProductRecipe } from "@/lib/custom-drink-types";
 import { flashToast } from "../flash";
+
+// The recipe pickers post each list as a JSON array of ids. The base comes from
+// the category, so a recipe is just flavors + toppings; no included flavor =>
+// null recipe (item isn't customizable).
+function parseRecipe(form: FormData): ProductRecipe | null {
+  const ids = (key: string): string[] => {
+    try {
+      const a = JSON.parse(field(form, key) || "[]");
+      return Array.isArray(a) ? a.filter((x): x is string => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+  const syrupIds = ids("recipeSyrups");
+  if (syrupIds.length === 0) return null;
+  return { syrupIds, toppingIds: ids("recipeToppings") };
+}
 
 const utapi = new UTApi();
 
@@ -54,6 +72,7 @@ export async function updateProduct(form: FormData): Promise<void> {
       taxRateBps: taxBps(form),
       trackInventory: bool(form, "trackInventory"),
       stock: Math.max(0, Number.parseInt(field(form, "stock"), 10) || 0),
+      recipe: parseRecipe(form),
       updatedAt: new Date(),
     })
     .where(eq(products.id, id));

@@ -4,6 +4,8 @@ import { deleteProduct } from "./actions";
 import ConfirmDelete from "../confirm-delete";
 import { PenIcon, TrashIcon } from "../icons";
 import { formatCents } from "@/lib/money";
+import ItemsBrowser from "./items-browser";
+import CustomDrinkTab from "./custom/custom-drink-tab";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,8 @@ function priceLabel(prices: number[]): string {
 
 export default async function AdminItemsPage() {
   const prods = await db.query.products.findMany({
+    // The custom-drink product is managed in Settings → Custom Drink, not here.
+    where: (p, { eq }) => eq(p.isCustom, false),
     with: {
       category: true,
       variations: true,
@@ -24,18 +28,15 @@ export default async function AdminItemsPage() {
     orderBy: (p, { asc }) => [asc(p.sort), asc(p.name)],
   });
 
-  return (
+  const itemsTab = (
     <>
-      <div className="admin-row-between">
-        <h1 className="admin-h1">Items</h1>
-        <div className="admin-actions">
-          <Link href="/admin/items/categories" className="admin-btn ghost">
-            Manage categories
-          </Link>
-          <Link href="/admin/items/new" className="admin-btn">
-            + New item
-          </Link>
-        </div>
+      <div className="admin-actions" style={{ justifyContent: "flex-end", marginBottom: 12 }}>
+        <Link href="/admin/items/categories" className="admin-btn ghost">
+          Manage categories
+        </Link>
+        <Link href="/admin/items/new" className="admin-btn">
+          + New item
+        </Link>
       </div>
       <p className="admin-sub">{prods.length} items</p>
 
@@ -111,6 +112,13 @@ export default async function AdminItemsPage() {
           </tbody>
         </table>
       </div>
+    </>
+  );
+
+  return (
+    <>
+      <h1 className="admin-h1">Items</h1>
+      <ItemsBrowser itemsTab={itemsTab} customTab={<CustomDrinkTab />} />
     </>
   );
 }

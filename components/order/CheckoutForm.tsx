@@ -152,6 +152,14 @@ const DELIVERY_CITIES = ["Fairview", "Mio"];
 const DELIVERY_ZIPS = ["48647", "48621"];
 const DELIVERY_STATE = "MI"; // Michigan-only delivery area.
 
+// Local delivery is only offered during the driver's window, 9 AM–2 PM.
+const DELIVERY_OPEN_HOUR = 9;
+const DELIVERY_CLOSE_HOUR = 14;
+function deliveryOpenNow(now: Date): boolean {
+  const h = now.getHours() + now.getMinutes() / 60;
+  return h >= DELIVERY_OPEN_HOUR && h < DELIVERY_CLOSE_HOUR;
+}
+
 type Address = { line1: string; line2: string; city: string; state: string; zip: string };
 const EMPTY_ADDRESS: Address = {
   line1: "",
@@ -172,7 +180,7 @@ export default function CheckoutForm({
 }) {
   const { items, subtotalCents, clear, remove } = useCart();
   const lines = useMemo(
-    () => items.map((i) => ({ variationId: i.variationId, qty: i.qty })),
+    () => items.map((i) => ({ variationId: i.variationId, qty: i.qty, custom: i.custom })),
     [items],
   );
   const methods = availableMethods();
@@ -189,6 +197,10 @@ export default function CheckoutForm({
   } | null>(null);
 
   const [method, setMethod] = useState<FulfillmentMethod>("pickup");
+  // Whether local delivery is currently within its 9 AM–2 PM window. null until
+  // hydrated on the client (computed from the clock, so it stays null on the
+  // server to avoid a hydration mismatch), then refreshed every minute.
+  const [deliveryAvailable, setDeliveryAvailable] = useState<boolean | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -266,6 +278,20 @@ export default function CheckoutForm({
       clearTimeout(timer);
     };
   }, [lines, method, email, coupon]);
+
+  // Track the local-delivery window on the client and refresh it each minute.
+  useEffect(() => {
+    const check = () => setDeliveryAvailable(deliveryOpenNow(new Date()));
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // If the window is closed (or closes mid-session) while delivery is selected,
+  // fall back to pickup so an unavailable method can never be submitted.
+  useEffect(() => {
+    if (deliveryAvailable === false && method === "delivery") setMethod("pickup");
+  }, [deliveryAvailable, method]);
 
   useEffect(() => {
     if (placed) window.scrollTo({ top: 0, behavior: "auto" });
@@ -511,18 +537,38 @@ export default function CheckoutForm({
           <div className="flex gap-2 mb-6">
             {methods.map((m) => {
               const active = method === m;
+              // Delivery is disabled outside its 9 AM–2 PM window.
+              const disabled = m === "delivery" && deliveryAvailable === false;
               return (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setMethod(m)}
+                  disabled={disabled}
+                  aria-label={
+                    disabled ? "Local delivery unavailable — only 9 AM–2 PM" : undefined
+                  }
+                  title={
+                    disabled ? "Local delivery is only available 9 AM–2 PM" : undefined
+                  }
                   className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors"
                   style={{
                     fontFamily: "var(--font-fredoka)",
-                    border: `2px solid var(--charcoal)`,
-                    backgroundColor: active ? "var(--pink-soft)" : "var(--paper)",
-                    color: active ? "var(--magenta-deep)" : "var(--charcoal)",
-                    boxShadow: active ? "2px 2px 0 var(--charcoal)" : "none",
+                    border: disabled
+                      ? "2px dashed var(--stone)"
+                      : "2px solid var(--charcoal)",
+                    backgroundColor: disabled
+                      ? "var(--border)"
+                      : active
+                        ? "var(--pink-soft)"
+                        : "var(--paper)",
+                    color: disabled
+                      ? "var(--ash)"
+                      : active
+                        ? "var(--magenta-deep)"
+                        : "var(--charcoal)",
+                    boxShadow: !disabled && active ? "2px 2px 0 var(--charcoal)" : "none",
+                    cursor: disabled ? "not-allowed" : "pointer",
                   }}
                 >
                   {METHOD_LABEL[m]}
@@ -532,9 +578,28 @@ export default function CheckoutForm({
           </div>
         )}
 
+        {/* Explain the disabled delivery button when the window is closed. */}
+        {methods.includes("delivery") && deliveryAvailable === false && (
+          <p
+            className="mb-6 rounded-lg px-3 py-2 text-sm"
+            style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
+          >
+            🚚 Local delivery is available <strong>9 AM–2 PM</strong> only — pickup is
+            available now.
+          </p>
+        )}
+
         <h2 className="text-xl mb-3" style={{ fontFamily: "var(--font-fredoka)" }}>
           {method === "delivery" ? "Delivery details" : "Pickup details"}
         </h2>
+        {method === "delivery" && (
+          <p
+            className="mb-3 rounded-lg px-3 py-2 text-sm"
+            style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
+          >
+            🚚 Local delivery is available <strong>9 AM–2 PM</strong> only.
+          </p>
+        )}
         <div className="space-y-3">
           <input
             value={name}
@@ -673,10 +738,15 @@ export default function CheckoutForm({
           </h2>
           <ul className="space-y-2.5 mb-4">
             {items.map((i) => (
-              <li key={i.variationId} className="flex justify-between gap-3 text-sm">
+              <li key={i.lineId} className="flex justify-between gap-3 text-sm">
                 <span style={{ color: "var(--charcoal)" }}>
                   {i.qty} × {i.productName}
                   <span style={{ color: "var(--stone)" }}> ({i.variationName})</span>
+                  {i.customSummary && (
+                    <span className="block text-xs" style={{ color: "var(--stone)" }}>
+                      {i.customSummary}
+                    </span>
+                  )}
                 </span>
                 <span className="whitespace-nowrap font-semibold">
                   {formatCents(i.priceCents * i.qty)}

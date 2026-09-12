@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { isUuid } from "@/lib/uuid";
 import { refundOrder } from "../actions";
 import { statusLabel, statusTagClass } from "@/lib/order-status";
 import { formatCents } from "@/lib/money";
@@ -17,6 +18,8 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // A non-UUID id would otherwise 500 in the query — treat it as not found.
+  if (!isUuid(id)) notFound();
   const order = await db.query.orders.findFirst({
     where: (o, { eq }) => eq(o.id, id),
     with: { items: true, payments: true },
@@ -130,6 +133,14 @@ export default async function OrderDetailPage({
                 <tr key={it.id}>
                   <td data-label="Item">
                     {it.productName} · {it.variationName}
+                    {it.customSummary && (
+                      <span
+                        className="admin-sub"
+                        style={{ display: "block", margin: "2px 0 0" }}
+                      >
+                        {it.customSummary}
+                      </span>
+                    )}
                   </td>
                   <td className="admin-num" data-label="Qty">
                     {it.qty}

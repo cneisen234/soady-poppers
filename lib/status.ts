@@ -49,9 +49,32 @@ function fmtHour12(h: number): string {
   return mins ? `${hour}:${String(mins).padStart(2, "0")} ${ap}` : `${hour} ${ap}`;
 }
 
+// The shop's timezone. Open/closed is always evaluated here so it's correct no
+// matter where this runs — the UTC server and any customer's browser agree.
+export const SHOP_TIME_ZONE = "America/Detroit";
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+/** Day-of-week (0=Sun) and decimal hour for `now` in the shop's timezone. */
+function shopNow(now: Date): { day: number; decimal: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SHOP_TIME_ZONE,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const day = WEEKDAY_INDEX[get("weekday")] ?? now.getDay();
+  const hour = Number(get("hour")) % 24; // Intl can emit "24" at midnight
+  const minute = Number(get("minute"));
+  return { day, decimal: hour + minute / 60 };
+}
+
 export function getOpenStatus(now: Date, hours: WeekHours = DEFAULT_HOURS): OpenState {
-  const day = now.getDay();
-  const decimal = now.getHours() + now.getMinutes() / 60;
+  const { day, decimal } = shopNow(now);
   const today = hours[day];
 
   if (today && decimal >= today.open && decimal < today.close) {

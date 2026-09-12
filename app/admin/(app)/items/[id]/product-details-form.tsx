@@ -4,7 +4,9 @@ import { useRef, useState } from "react";
 import { updateProduct } from "../actions";
 import { useAutosave, SaveStatus } from "../../autosave";
 
-type Cat = { id: string; name: string };
+type Cat = { id: string; name: string; baseNames: string[] };
+type Named = { id: string; name: string };
+type Recipe = { syrupIds: string[]; toppingIds: string[] };
 
 type ProductLite = {
   id: string;
@@ -28,14 +30,20 @@ type Fields = {
   taxRatePercent: string;
   trackInventory: boolean;
   stock: string;
+  syrupIds: string[];
+  toppingIds: string[];
 };
 
 export default function ProductDetailsForm({
   product,
   categories,
+  recipe,
+  pools,
 }: {
   product: ProductLite;
   categories: Cat[];
+  recipe: Recipe | null;
+  pools: { syrups: Named[]; toppings: Named[] };
 }) {
   const [f, setF] = useState<Fields>({
     name: product.name,
@@ -49,6 +57,8 @@ export default function ProductDetailsForm({
       product.taxRateBps && product.taxRateBps > 0 ? String(product.taxRateBps / 100) : "",
     trackInventory: product.trackInventory,
     stock: String(product.stock),
+    syrupIds: recipe?.syrupIds ?? [],
+    toppingIds: recipe?.toppingIds ?? [],
   });
   const latest = useRef(f);
   latest.current = f;
@@ -69,8 +79,15 @@ export default function ProductDetailsForm({
       fd.set("taxRatePercent", v.taxRatePercent);
       if (v.trackInventory) fd.set("trackInventory", "on");
       fd.set("stock", v.stock);
+      fd.set("recipeSyrups", JSON.stringify(v.syrupIds));
+      fd.set("recipeToppings", JSON.stringify(v.toppingIds));
       await updateProduct(fd);
     });
+  }
+
+  function toggleId(key: "syrupIds" | "toppingIds", id: string) {
+    const cur = latest.current[key];
+    update(key, cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
   }
 
   return (
@@ -192,6 +209,57 @@ export default function ProductDetailsForm({
           </label>
         </div>
       </fieldset>
+
+      <fieldset className="admin-fieldset">
+        <legend>Customize (recipe)</legend>
+        <ChipMulti
+          label="Flavors (included)"
+          options={pools.syrups}
+          selected={f.syrupIds}
+          onToggle={(id) => toggleId("syrupIds", id)}
+        />
+        <ChipMulti
+          label="Creams & toppings (included)"
+          options={pools.toppings}
+          selected={f.toppingIds}
+          onToggle={(id) => toggleId("toppingIds", id)}
+        />
+      </fieldset>
+    </div>
+  );
+}
+
+function ChipMulti({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: Named[];
+  selected: string[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="admin-field">
+      <span>{label}</span>
+      <div className="admin-chipwrap">
+        {options.length === 0 && <span className="admin-sub">None in the pool yet.</span>}
+        {options.map((o) => {
+          const on = selected.includes(o.id);
+          return (
+            <button
+              key={o.id}
+              type="button"
+              className={`admin-chip ${on ? "on" : ""}`}
+              aria-pressed={on}
+              onClick={() => onToggle(o.id)}
+            >
+              {o.name}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories } from "@/lib/db/schema";
+import { isUuid } from "@/lib/uuid";
+import { categories, customBases, customSyrups, customToppings } from "@/lib/db/schema";
 import { saveVariation } from "../actions";
 import ImageManager from "./image-manager";
 import ProductDetailsForm from "./product-details-form";
@@ -16,8 +17,10 @@ export default async function EditItemPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // A non-UUID id (e.g. /admin/items/custom) would otherwise 500 in the query.
+  if (!isUuid(id)) notFound();
 
-  const [product, cats] = await Promise.all([
+  const [product, cats, baseRows, syrupRows, toppingRows] = await Promise.all([
     db.query.products.findFirst({
       where: (p, { eq }) => eq(p.id, id),
       with: {
@@ -26,9 +29,21 @@ export default async function EditItemPage({
       },
     }),
     db.select().from(categories).orderBy(asc(categories.sort), asc(categories.name)),
+    db.select().from(customBases).where(eq(customBases.active, true)).orderBy(asc(customBases.name)),
+    db.select().from(customSyrups).where(eq(customSyrups.active, true)).orderBy(asc(customSyrups.name)),
+    db.select().from(customToppings).where(eq(customToppings.active, true)).orderBy(asc(customToppings.name)),
   ]);
 
   if (!product) notFound();
+
+  const baseName = new Map(baseRows.map((b) => [b.id, b.name]));
+  const catsWithBases = cats.map((c) => ({
+    id: c.id,
+    name: c.name,
+    baseNames: (c.baseIds ?? [])
+      .map((id) => baseName.get(id))
+      .filter((n): n is string => !!n),
+  }));
 
   return (
     <>
@@ -52,7 +67,12 @@ export default async function EditItemPage({
           trackInventory: product.trackInventory,
           stock: product.stock,
         }}
-        categories={cats.map((c) => ({ id: c.id, name: c.name }))}
+        categories={catsWithBases}
+        recipe={product.recipe ?? null}
+        pools={{
+          syrups: syrupRows.map((s) => ({ id: s.id, name: s.name })),
+          toppings: toppingRows.map((t) => ({ id: t.id, name: t.name })),
+        }}
       />
 
       {/* ---- Variations (auto-save) ---- */}

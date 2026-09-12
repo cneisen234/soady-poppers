@@ -38,8 +38,8 @@ export default function AboutPage() {
               <span className="eyebrow mb-3 inline-block">Meet the boss</span>
               <h2 className="text-3xl md:text-4xl">The face behind the shades</h2>
               <p className="mt-4 text-lg" style={{ color: 'var(--ash)' }}>
-                That pup in the pink heart sunglasses on every cup, banner and sign? He’s the real deal — the
-                good boy the whole shop is named for.
+                That pup in the pink heart sunglasses on every cup, banner and sign? She’s the real deal — the
+                good girl the whole shop is named for.
               </p>
             </div>
           </div>

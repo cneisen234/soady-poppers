@@ -13,7 +13,13 @@ import {
   useState,
 } from "react";
 
+import type { CustomConfig } from "@/lib/custom-drink-types";
+
 export type CartItem = {
+  // Unique key per cart line. For normal items this equals variationId (so the
+  // same size merges); for custom drinks it's a generated id (so two different
+  // builds of the same size stay as separate lines).
+  lineId: string;
   variationId: string;
   productId: string;
   productName: string;
@@ -21,13 +27,16 @@ export type CartItem = {
   priceCents: number;
   imageUrl?: string;
   qty: number;
+  /** Present for a custom drink: the build + a human-readable summary. */
+  custom?: CustomConfig;
+  customSummary?: string;
 };
 
 type CartContextValue = {
   items: CartItem[];
-  add: (item: Omit<CartItem, "qty">, qty?: number) => void;
-  setQty: (variationId: string, qty: number) => void;
-  remove: (variationId: string) => void;
+  add: (item: Omit<CartItem, "qty" | "lineId"> & { lineId?: string }, qty?: number) => void;
+  setQty: (lineId: string, qty: number) => void;
+  remove: (lineId: string) => void;
   clear: () => void;
   count: number;
   subtotalCents: number;
@@ -45,7 +54,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw));
+      if (raw) {
+        // Backfill lineId for carts saved before custom drinks existed.
+        const parsed: CartItem[] = JSON.parse(raw);
+        setItems(parsed.map((i) => ({ ...i, lineId: i.lineId ?? i.variationId })));
+      }
     } catch {
       // ignore malformed storage
     }
@@ -62,28 +75,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, hydrated]);
 
-  const add = useCallback((item: Omit<CartItem, "qty">, qty = 1) => {
-    setItems((prev) => {
-      const existing = prev.find((i) => i.variationId === item.variationId);
-      if (existing) {
-        return prev.map((i) =>
-          i.variationId === item.variationId ? { ...i, qty: i.qty + qty } : i,
-        );
-      }
-      return [...prev, { ...item, qty }];
-    });
-  }, []);
+  const add = useCallback(
+    (item: Omit<CartItem, "qty" | "lineId"> & { lineId?: string }, qty = 1) => {
+      // Normal items key by variationId (so the same size merges); custom drinks
+      // pass their own unique lineId so each build is its own line.
+      const lineId = item.lineId ?? item.variationId;
+      setItems((prev) => {
+        const existing = prev.find((i) => i.lineId === lineId);
+        if (existing) {
+          return prev.map((i) => (i.lineId === lineId ? { ...i, qty: i.qty + qty } : i));
+        }
+        return [...prev, { ...item, lineId, qty }];
+      });
+    },
+    [],
+  );
 
-  const setQty = useCallback((variationId: string, qty: number) => {
+  const setQty = useCallback((lineId: string, qty: number) => {
     setItems((prev) =>
       qty <= 0
-        ? prev.filter((i) => i.variationId !== variationId)
-        : prev.map((i) => (i.variationId === variationId ? { ...i, qty } : i)),
+        ? prev.filter((i) => i.lineId !== lineId)
+        : prev.map((i) => (i.lineId === lineId ? { ...i, qty } : i)),
     );
   }, []);
 
-  const remove = useCallback((variationId: string) => {
-    setItems((prev) => prev.filter((i) => i.variationId !== variationId));
+  const remove = useCallback((lineId: string) => {
+    setItems((prev) => prev.filter((i) => i.lineId !== lineId));
   }, []);
 
   const clear = useCallback(() => setItems([]), []);

@@ -19,11 +19,18 @@ import {
 import { getSettings, deliveryFeeCents, type Settings } from "@/lib/settings";
 import { discountBpsForEmail } from "@/lib/discounts";
 import { couponForCode, normalizeCode, type CouponMatch } from "@/lib/coupons";
+import {
+  getCustomDrink,
+  getRecipeContexts,
+  CUSTOM_PRODUCT_ID,
+  type RecipeContext,
+} from "@/lib/custom-drink";
+import type { CustomConfig, CustomDrinkData } from "@/lib/custom-drink-types";
 import { notifyNewOrder } from "@/lib/notifications";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
 
 export type { DeliveryAddress };
-export type CheckoutLine = { variationId: string; qty: number };
+export type CheckoutLine = { variationId: string; qty: number; custom?: CustomConfig };
 export type Customer = { name: string; email?: string; phone?: string; note?: string };
 export type Fulfillment = { method: FulfillmentMethod; address?: DeliveryAddress };
 
@@ -141,6 +148,15 @@ async function queryLineRows(lines: CheckoutLine[]): Promise<Map<string, LineRow
   return new Map(rows.map((r) => [r.vId, r]));
 }
 
+/** Recipe contexts for any "Customize this drink" lines (keyed by product id).
+ * Empty when no line carries a recipeProductId. */
+function loadRecipeContexts(lines: CheckoutLine[]): Promise<Map<string, RecipeContext>> {
+  const ids = lines
+    .map((l) => l.custom?.recipeProductId)
+    .filter((x): x is string => !!x);
+  return ids.length ? getRecipeContexts(ids) : Promise.resolve(new Map());
+}
+
 /** Re-check the cart against live DB data, the kill switch, and inventory. */
 export async function validateLines(lines: CheckoutLine[]): Promise<ValidationResult> {
   const s = await getSettings();
@@ -190,6 +206,45 @@ export async function validateLines(lines: CheckoutLine[]): Promise<ValidationRe
     }
   }
 
+  // Custom drinks: the build must be valid against the live options + settings,
+  // and only the custom product may carry a build.
+  const touchesCustom = lines.some(
+    (l) => l.custom || rows.get(l.variationId)?.pId === CUSTOM_PRODUCT_ID,
+  );
+  if (touchesCustom) {
+    const [customData, recipes] = await Promise.all([
+      getCustomDrink(),
+      loadRecipeContexts(lines),
+    ]);
+    for (const line of lines) {
+      const r = rows.get(line.variationId);
+      if (!r || soldOut.has(line.variationId)) continue;
+      const isCustomProduct = r.pId === CUSTOM_PRODUCT_ID;
+      if (isCustomProduct && !line.custom) {
+        problems.push("A custom drink is missing its build.");
+        soldOut.add(line.variationId);
+      } else if (line.custom && !isCustomProduct) {
+        problems.push("That item can't be customized.");
+        soldOut.add(line.variationId);
+      } else if (line.custom) {
+        const rc = line.custom.recipeProductId;
+        if (!customData) {
+          problems.push("Custom drinks aren't available right now.");
+          soldOut.add(line.variationId);
+        } else if (rc && !recipes.get(rc)) {
+          problems.push("That item can't be customized right now.");
+          soldOut.add(line.variationId);
+        } else {
+          const addon = resolveCustomAddon(line.custom, customData, rc ? recipes.get(rc) : undefined);
+          if (!addon.ok) {
+            problems.push(addon.reason);
+            soldOut.add(line.variationId);
+          }
+        }
+      }
+    }
+  }
+
   const uniqueProblems = [...new Set(problems)];
   return uniqueProblems.length
     ? { ok: false, problems: uniqueProblems, soldOut: [...soldOut] }
@@ -224,7 +279,84 @@ type SnapshotItem = {
   taxRateBps: number;
   taxCents: number;
   track: boolean;
+  customSummary?: string;
 };
+
+type CustomAddon =
+  | { ok: true; addonCents: number; summary: string }
+  | { ok: false; reason: string };
+
+/** Validate a custom-drink config against the live options and price its add-ons
+ * (everything on top of the size's base price). Server-authoritative.
+ *
+ * `recipe` is set when the build started from a predefined item's "Customize"
+ * button: the free-flavor threshold becomes that item's included-flavor count and
+ * the base must belong to the item's category — both re-derived from the DB here,
+ * never trusted from the client. */
+function resolveCustomAddon(
+  config: CustomConfig,
+  data: CustomDrinkData,
+  recipe?: RecipeContext,
+): CustomAddon {
+  const p = data.pricing;
+  const base = data.bases.find((b) => b.id === config.baseId);
+  if (!base) return { ok: false, reason: "That base isn't available." };
+  if (config.sugarFree ? !base.availableSugarFree : !base.availableRegular)
+    return { ok: false, reason: "That base isn't available in that style." };
+  if (recipe && !recipe.baseIds.includes(config.baseId))
+    return { ok: false, reason: "That base isn't available for this drink." };
+
+  if (config.syrupIds.length < 1) return { ok: false, reason: "Pick at least one flavor." };
+  if (config.syrupIds.length > p.maxSyrups)
+    return { ok: false, reason: `Too many flavors (max ${p.maxSyrups}).` };
+  const syrupNames: string[] = [];
+  for (const id of config.syrupIds) {
+    const syr = data.syrups.find((x) => x.id === id);
+    if (!syr) return { ok: false, reason: "A flavor isn't available." };
+    if (config.sugarFree ? !syr.availableSugarFree : !syr.availableRegular)
+      return { ok: false, reason: "A flavor isn't available in that style." };
+    syrupNames.push(syr.name);
+  }
+
+  // Creams & toppings — free, no style restriction.
+  const toppingNames: string[] = [];
+  for (const id of config.toppingIds ?? []) {
+    const top = data.toppings.find((x) => x.id === id);
+    if (!top) return { ok: false, reason: "A topping isn't available." };
+    toppingNames.push(top.name);
+  }
+
+  let milkName: string | undefined;
+  if (config.milkId) {
+    const milk = data.milks.find((x) => x.id === config.milkId);
+    if (!milk) return { ok: false, reason: "That milk isn't available." };
+    milkName = milk.name;
+  }
+
+  // Included flavors are free (the item's recipe count when customizing a
+  // predefined drink, else the shop's global free allowance); extras cost each.
+  const freeSyrups = recipe ? recipe.freeSyrups : p.freeSyrups;
+  const paidSyrups = Math.max(0, config.syrupIds.length - freeSyrups);
+  const addonCents =
+    paidSyrups * p.syrupCents +
+    (config.caffeine ? p.caffeineCents : 0) +
+    (config.electrolytes ? p.electrolyteCents : 0) +
+    (config.milkId ? p.milkCents : 0);
+
+  const summary = [
+    config.sugarFree ? "Sugar-free" : "Regular",
+    base.name,
+    syrupNames.join(", "),
+    toppingNames.length ? `+ ${toppingNames.join(", ")}` : "",
+    config.caffeine ? "+ Caffeine" : "",
+    config.electrolytes ? "+ Electrolytes" : "",
+    milkName ? `+ ${milkName}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return { ok: true, addonCents, summary };
+}
 
 const NO_DISCOUNT: DiscountResolution = { vendorBps: 0, coupon: null, couponValid: null };
 
@@ -234,6 +366,8 @@ function computeTotals(
   method: FulfillmentMethod,
   s: Settings,
   discount: DiscountResolution = NO_DISCOUNT,
+  customData: CustomDrinkData | null = null,
+  recipes: Map<string, RecipeContext> = new Map(),
 ): { totals: OrderTotals; items: SnapshotItem[]; appliedCouponCode: string | null } {
   let subtotal = 0;
   let tax = 0;
@@ -243,7 +377,18 @@ function computeTotals(
   for (const line of lines) {
     const r = rows.get(line.variationId);
     if (!r || line.qty <= 0) continue;
-    const lineSubtotal = r.price * line.qty;
+    // Custom drink: unit price = the size's base price + validated add-ons.
+    let unitPrice = r.price;
+    let customSummary: string | undefined;
+    if (line.custom && customData && r.pId === CUSTOM_PRODUCT_ID) {
+      const rc = line.custom.recipeProductId;
+      const addon = resolveCustomAddon(line.custom, customData, rc ? recipes.get(rc) : undefined);
+      if (addon.ok) {
+        unitPrice = r.price + addon.addonCents;
+        customSummary = addon.summary;
+      }
+    }
+    const lineSubtotal = unitPrice * line.qty;
     subtotal += lineSubtotal;
     itemCount += line.qty;
     // null → inherit global rate; 0 → exempt; else custom rate (basis points).
@@ -255,13 +400,14 @@ function computeTotals(
       productId: r.pId,
       productName: r.pName,
       variationName: r.vName,
-      unitPriceCents: r.price,
+      unitPriceCents: unitPrice,
       qty: line.qty,
       lineTotalCents: lineSubtotal,
       taxable: rate > 0,
       taxRateBps: rate,
       taxCents: lineTax,
       track: r.track,
+      customSummary,
     });
   }
 
@@ -294,11 +440,22 @@ export async function quoteOrder(
   couponCode?: string,
 ): Promise<OrderQuote> {
   const s = await getSettings();
-  const [rows, discount] = await Promise.all([
+  const hasCustom = lines.some((l) => l.custom);
+  const [rows, discount, customData, recipes] = await Promise.all([
     queryLineRows(lines),
     resolveDiscount(email, couponCode),
+    hasCustom ? getCustomDrink() : Promise.resolve(null),
+    loadRecipeContexts(lines),
   ]);
-  const { totals, appliedCouponCode } = computeTotals(rows, lines, method, s, discount);
+  const { totals, appliedCouponCode } = computeTotals(
+    rows,
+    lines,
+    method,
+    s,
+    discount,
+    customData,
+    recipes,
+  );
   return {
     ...totals,
     appliedCouponCode,
@@ -332,9 +489,12 @@ export async function placeOrder(
     throw new SoldOutError(validation.problems, validation.soldOut, validation.paused);
   }
 
-  const [rows, discount] = await Promise.all([
+  const hasCustom = lines.some((l) => l.custom);
+  const [rows, discount, customData, recipes] = await Promise.all([
     queryLineRows(lines),
     resolveDiscount(customer.email, couponCode),
+    hasCustom ? getCustomDrink() : Promise.resolve(null),
+    loadRecipeContexts(lines),
   ]);
   const { totals, items, appliedCouponCode } = computeTotals(
     rows,
@@ -342,6 +502,8 @@ export async function placeOrder(
     fulfillment.method,
     s,
     discount,
+    customData,
+    recipes,
   );
   if (totals.totalCents <= 0) throw new Error("Order total is invalid.");
 
@@ -386,6 +548,7 @@ export async function placeOrder(
         variationId: it.variationId,
         productName: it.productName,
         variationName: it.variationName,
+        customSummary: it.customSummary ?? null,
         unitPriceCents: it.unitPriceCents,
         qty: it.qty,
         lineTotalCents: it.lineTotalCents,
@@ -429,6 +592,7 @@ export async function placeOrder(
       name: `${it.productName} (${it.variationName})`,
       qty: it.qty,
       totalCents: it.lineTotalCents,
+      detail: it.customSummary,
     })),
     ...totals,
   }).catch(() => {});

@@ -1,0 +1,2 @@
+ALTER TABLE "custom_bases" ADD COLUMN "available_regular" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "custom_bases" ADD COLUMN "available_sugar_free" boolean DEFAULT false NOT NULL;

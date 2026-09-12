@@ -45,9 +45,13 @@ function Placeholder() {
 export default function ProductCard({
   product,
   ordering,
+  onCustomize,
 }: {
   product: Product;
   ordering: boolean;
+  /** When set (and the item has a recipe), shows a "Customize" button that opens
+   * the build wizard pre-filled with this drink. */
+  onCustomize?: () => void;
 }) {
   const { add } = useCart();
   const sellable = product.variations.filter((v) => v.available);
@@ -60,6 +64,7 @@ export default function ProductCard({
     product.variations.find((v) => v.id === variationId) ?? product.variations[0];
   const soldOut = !product.available;
   const canAdd = ordering && !soldOut && selected?.available;
+  const canCustomize = ordering && !soldOut && !!product.recipe && !!onCustomize;
 
   function handleAdd() {
     if (!canAdd || !selected) return;
@@ -154,27 +159,34 @@ export default function ProductCard({
           >
             {selected?.priceLabel}
           </span>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={!canAdd}
-            className="btn-pop text-sm"
-            style={
-              !canAdd
-                ? {
-                    // Same "locked" language as the disabled fields at checkout:
-                    // muted tan fill, dashed border, muted text, no pop shadow.
-                    backgroundColor: "var(--border)",
-                    color: "var(--ash)",
-                    border: "2px dashed var(--stone)",
-                    boxShadow: "none",
-                    cursor: "not-allowed",
-                  }
-                : undefined
-            }
-          >
-            {justAdded ? "Added ✓" : soldOut ? "Out of stock" : "Add"}
-          </button>
+          <div className="flex items-center gap-2">
+            {canCustomize && (
+              <button type="button" onClick={onCustomize} className="btn-outline text-sm">
+                Customize
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!canAdd}
+              className="btn-pop text-sm"
+              style={
+                !canAdd
+                  ? {
+                      // Same "locked" language as the disabled fields at checkout:
+                      // muted tan fill, dashed border, muted text, no pop shadow.
+                      backgroundColor: "var(--border)",
+                      color: "var(--ash)",
+                      border: "2px dashed var(--stone)",
+                      boxShadow: "none",
+                      cursor: "not-allowed",
+                    }
+                  : undefined
+              }
+            >
+              {justAdded ? "Added ✓" : soldOut ? "Out of stock" : "Add"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

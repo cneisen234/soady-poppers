@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listCatalog } from "@/lib/catalog";
 import { getSettings } from "@/lib/settings";
+import { getCustomDrink } from "@/lib/custom-drink";
 import { getOpenStatus } from "@/lib/status";
 import Storefront from "@/components/order/Storefront";
 
@@ -22,6 +23,8 @@ export default async function OrderPage() {
   const closedNote = open.open
     ? undefined
     : `We're closed right now — order anytime and we'll have it ready at the next opening. ${open.sub}.`;
+
+  const customDrink = await getCustomDrink().catch(() => null);
 
   let catalog;
   try {
@@ -76,6 +79,7 @@ export default async function OrderPage() {
         ordering={settings.acceptingOrders}
         pausedMessage={settings.pausedMessage ?? undefined}
         closedNote={closedNote}
+        customDrink={customDrink}
       />
     </>
   );

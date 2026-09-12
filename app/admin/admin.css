@@ -492,6 +492,55 @@ textarea.admin-input { resize: vertical; }
 .admin-order-cell { display: inline-flex; align-items: center; gap: 10px; }
 .admin-order-id { font-weight: 600; color: var(--charcoal); white-space: nowrap; }
 
+/* Custom-drink options header: sub-tabs on the left, Add button on the right. */
+.admin-custom-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Two-line option row (used by the syrup list: name on top, flag toggles below). */
+.admin-optlist-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.admin-optlist-row:first-of-type { padding-top: 0; }
+.admin-optlist-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-optlist-line .admin-list-main { flex: 1; }
+/* Fixed slot for the sugar-free leaf, so rows with/without it stay aligned. */
+.admin-syrup-flag {
+  flex: 0 0 auto;
+  width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Multi-select chips (recipe ingredient pickers). */
+.admin-chipwrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.admin-chip {
+  font-family: var(--font-fredoka), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--cream);
+  color: var(--charcoal);
+  cursor: pointer;
+}
+.admin-chip.on {
+  border-color: var(--magenta, #e8308a);
+  background: var(--pink-soft);
+  color: var(--magenta-deep);
+}
+
 /* Segmented %/$ toggle — same height as .admin-input so it lines up in a row. */
 .admin-seg {
   display: inline-flex;
@@ -1029,6 +1078,8 @@ textarea.admin-input { resize: vertical; }
 /* Order tabs + filters */
 .admin-tabs {
   display: inline-flex;
+  align-self: flex-start; /* don't stretch when inside a column flex (.admin-form) */
+  max-width: 100%;
   gap: 4px;
   padding: 4px;
   background: var(--paper);

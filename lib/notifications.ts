@@ -20,7 +20,7 @@ export type OrderNotice = {
   address?: { line1: string; line2?: string; city: string; state: string; zip: string };
   note?: string;
   couponCode?: string;
-  lines: { name: string; qty: number; totalCents: number }[];
+  lines: { name: string; qty: number; totalCents: number; detail?: string }[];
   subtotalCents: number;
   discountCents: number;
   taxCents: number;
@@ -71,14 +71,23 @@ async function sendEmail(opts: {
 }
 
 function itemLinesText(n: OrderNotice): string {
-  return n.lines.map((l) => `  ${l.qty}× ${l.name} — ${formatCents(l.totalCents)}`).join("\n");
+  return n.lines
+    .map((l) => {
+      const head = `  ${l.qty}× ${l.name} — ${formatCents(l.totalCents)}`;
+      return l.detail ? `${head}\n      ${l.detail}` : head;
+    })
+    .join("\n");
 }
 function itemRowsHtml(n: OrderNotice): string {
   return n.lines
     .map(
       (l) => `<tr>
-        <td style="padding:6px 0;color:#2B2630;">${l.qty}&times; ${l.name}</td>
-        <td style="padding:6px 0;text-align:right;color:#2B2630;">${formatCents(l.totalCents)}</td>
+        <td style="padding:6px 0;color:#2B2630;">${l.qty}&times; ${l.name}${
+          l.detail
+            ? `<br><span style="color:#5B5560;font-size:12px;">${l.detail}</span>`
+            : ""
+        }</td>
+        <td style="padding:6px 0;text-align:right;color:#2B2630;vertical-align:top;">${formatCents(l.totalCents)}</td>
       </tr>`,
     )
     .join("");

@@ -7,6 +7,7 @@
 
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
+import type { ProductRecipe } from "@/lib/custom-drink-types";
 
 export type ProductVariation = {
   id: string;
@@ -27,10 +28,14 @@ export type Product = {
   /** False when the item is paused or every variation is unavailable. */
   available: boolean;
   variations: ProductVariation[];
+  /** Set when this item can be customized (included flavors + toppings). The base
+   * is inherited from the category — see the matching category's baseIds. */
+  recipe?: ProductRecipe;
 };
 
 export type Catalog = {
-  categories: { id: string; name: string }[];
+  /** baseIds are the customizable bases the category allows (from custom_bases). */
+  categories: { id: string; name: string; baseIds: string[] }[];
   products: Product[];
 };
 
@@ -46,7 +51,8 @@ export async function listCatalog(): Promise<Catalog> {
       orderBy: (c, { asc }) => [asc(c.sort), asc(c.name)],
     }),
     db.query.products.findMany({
-      where: (p, { eq }) => eq(p.hidden, false),
+      // Exclude the custom-drink product — it's rendered via its own wizard entry.
+      where: (p, { eq, and }) => and(eq(p.hidden, false), eq(p.isCustom, false)),
       orderBy: (p, { asc }) => [asc(p.sort), asc(p.name)],
       with: {
         category: true,
@@ -78,9 +84,10 @@ export async function listCatalog(): Promise<Catalog> {
         (!p.trackInventory || p.stock > 0) &&
         variations.some((v) => v.available),
       variations,
+      recipe: p.recipe ?? undefined,
     };
   });
 
-  const categories = cats.map((c) => ({ id: c.id, name: c.name }));
+  const categories = cats.map((c) => ({ id: c.id, name: c.name, baseIds: c.baseIds ?? [] }));
   return { categories, products };
 }

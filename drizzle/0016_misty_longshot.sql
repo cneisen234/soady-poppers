@@ -1,0 +1,1 @@
+ALTER TABLE "categories" ADD COLUMN "base_ids" jsonb DEFAULT '[]'::jsonb NOT NULL;

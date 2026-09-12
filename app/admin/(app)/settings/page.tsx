@@ -9,7 +9,7 @@ export default async function AdminSettingsPage() {
   return (
     <>
       <h1 className="admin-h1">Settings</h1>
-      <p className="admin-sub">Tax, delivery fees, hours, and the online-ordering switch.</p>
+      <p className="admin-sub">Ordering, tax, delivery, and hours.</p>
 
       <SettingsForm
         settings={{
