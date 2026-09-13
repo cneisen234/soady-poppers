@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   }
 
   // Validate the chosen fulfillment method + its required fields.
-  const fulfillmentCheck = validateFulfillment(fulfillment);
+  const fulfillmentCheck = await validateFulfillment(fulfillment);
   if (!fulfillmentCheck.ok) {
     return Response.json(
       { ok: false, message: fulfillmentCheck.problems.join(" ") },

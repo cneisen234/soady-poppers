@@ -28,6 +28,7 @@ import {
 import type { CustomConfig, CustomDrinkData } from "@/lib/custom-drink-types";
 import { notifyNewOrder } from "@/lib/notifications";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
+import { deliveryOpenNow } from "@/lib/status";
 
 export type { DeliveryAddress };
 export type CheckoutLine = { variationId: string; qty: number; custom?: CustomConfig };
@@ -251,12 +252,23 @@ export async function validateLines(lines: CheckoutLine[]): Promise<ValidationRe
     : { ok: true };
 }
 
-/** Check the chosen fulfillment method is offered and has the data it needs. */
-export function validateFulfillment(f: Fulfillment): { ok: true } | { ok: false; problems: string[] } {
+/** Check the chosen fulfillment method is offered and has the data it needs.
+ * Server-authoritative: the delivery time-window is re-checked here (in the shop's
+ * timezone) so it can't be bypassed by a tampered client. */
+export async function validateFulfillment(
+  f: Fulfillment,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   if (!isMethodAvailable(f.method)) {
     return { ok: false, problems: ["That fulfillment method isn't available."] };
   }
   if (f.method === "delivery") {
+    const { hours } = await getSettings();
+    if (!deliveryOpenNow(new Date(), hours)) {
+      return {
+        ok: false,
+        problems: ["Local delivery is only available 10 AM–2 PM while we're open."],
+      };
+    }
     const a = f.address;
     const missing =
       !a?.line1?.trim() || !a?.city?.trim() || !a?.state?.trim() || !a?.zip?.trim();

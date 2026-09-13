@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "./CartProvider";
 import { formatCents } from "@/lib/money";
 import { availableMethods, type FulfillmentMethod } from "@/lib/fulfillment";
+import { deliveryOpenNow, type WeekHours } from "@/lib/status";
 
 // Square Web Payments SDK — loaded from their CDN, tokenizes the card inside a
 // Square-hosted iframe so raw card data never touches our server.
@@ -152,13 +153,8 @@ const DELIVERY_CITIES = ["Fairview", "Mio"];
 const DELIVERY_ZIPS = ["48647", "48621"];
 const DELIVERY_STATE = "MI"; // Michigan-only delivery area.
 
-// Local delivery is only offered during the driver's window, 9 AM–2 PM.
-const DELIVERY_OPEN_HOUR = 9;
-const DELIVERY_CLOSE_HOUR = 14;
-function deliveryOpenNow(now: Date): boolean {
-  const h = now.getHours() + now.getMinutes() / 60;
-  return h >= DELIVERY_OPEN_HOUR && h < DELIVERY_CLOSE_HOUR;
-}
+// Local delivery availability (10 AM–2 PM shop time, and only while the shop is
+// open) is computed in the shop's timezone — see deliveryOpenNow in lib/status.
 
 type Address = { line1: string; line2: string; city: string; state: string; zip: string };
 const EMPTY_ADDRESS: Address = {
@@ -173,10 +169,12 @@ export default function CheckoutForm({
   appId,
   locationId,
   squareEnv,
+  hours,
 }: {
   appId: string;
   locationId: string;
   squareEnv: string;
+  hours: WeekHours;
 }) {
   const { items, subtotalCents, clear, remove } = useCart();
   const lines = useMemo(
@@ -281,11 +279,11 @@ export default function CheckoutForm({
 
   // Track the local-delivery window on the client and refresh it each minute.
   useEffect(() => {
-    const check = () => setDeliveryAvailable(deliveryOpenNow(new Date()));
+    const check = () => setDeliveryAvailable(deliveryOpenNow(new Date(), hours));
     check();
     const id = setInterval(check, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [hours]);
 
   // If the window is closed (or closes mid-session) while delivery is selected,
   // fall back to pickup so an unavailable method can never be submitted.
@@ -537,7 +535,7 @@ export default function CheckoutForm({
           <div className="flex gap-2 mb-6">
             {methods.map((m) => {
               const active = method === m;
-              // Delivery is disabled outside its 9 AM–2 PM window.
+              // Delivery is disabled outside its 10 AM–2 PM window, or while closed.
               const disabled = m === "delivery" && deliveryAvailable === false;
               return (
                 <button
@@ -546,10 +544,10 @@ export default function CheckoutForm({
                   onClick={() => setMethod(m)}
                   disabled={disabled}
                   aria-label={
-                    disabled ? "Local delivery unavailable — only 9 AM–2 PM" : undefined
+                    disabled ? "Local delivery unavailable — only 10 AM–2 PM while open" : undefined
                   }
                   title={
-                    disabled ? "Local delivery is only available 9 AM–2 PM" : undefined
+                    disabled ? "Local delivery is only available 10 AM–2 PM while we're open" : undefined
                   }
                   className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors"
                   style={{
@@ -584,8 +582,8 @@ export default function CheckoutForm({
             className="mb-6 rounded-lg px-3 py-2 text-sm"
             style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
           >
-            🚚 Local delivery is available <strong>9 AM–2 PM</strong> only — pickup is
-            available now.
+            🚚 Local delivery is available <strong>10 AM–2 PM</strong> while we&rsquo;re
+            open — pickup is available now.
           </p>
         )}
 
@@ -597,7 +595,7 @@ export default function CheckoutForm({
             className="mb-3 rounded-lg px-3 py-2 text-sm"
             style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
           >
-            🚚 Local delivery is available <strong>9 AM–2 PM</strong> only.
+            🚚 Local delivery is available <strong>10 AM–2 PM</strong> while we&rsquo;re open.
           </p>
         )}
         <div className="space-y-3">

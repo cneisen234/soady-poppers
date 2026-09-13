@@ -108,6 +108,18 @@ export function getOpenStatus(now: Date, hours: WeekHours = DEFAULT_HOURS): Open
   return { open: false, short: "Closed", headline: "CLOSED", script: "See you soon", sub: "" };
 }
 
+// Local delivery runs only inside the driver's window (10 AM–2 PM) AND while the
+// shop is open. Evaluated in SHOP_TIME_ZONE — like getOpenStatus — so it's correct
+// no matter where it runs (the UTC server or any customer's browser, in any tz).
+export const DELIVERY_OPEN_HOUR = 10;
+export const DELIVERY_CLOSE_HOUR = 14;
+
+export function deliveryOpenNow(now: Date, hours: WeekHours = DEFAULT_HOURS): boolean {
+  const { decimal } = shopNow(now);
+  const inWindow = decimal >= DELIVERY_OPEN_HOUR && decimal < DELIVERY_CLOSE_HOUR;
+  return inWindow && getOpenStatus(now, hours).open;
+}
+
 export type HoursRow = { label: string; value: string; closed?: boolean };
 
 /** Human-readable Monday-first hours list for the footer / visit page. */

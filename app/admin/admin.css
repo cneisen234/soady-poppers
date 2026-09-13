@@ -1103,6 +1103,28 @@ textarea.admin-input { resize: vertical; }
   background: var(--magenta);
   color: var(--bone);
 }
+/* On phones the four order tabs must fit one row without scrolling — tighten
+   spacing first, then trim the font as needed. */
+@media (max-width: 640px) {
+  .admin-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+  }
+  .admin-tab {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 380px) {
+  .admin-tab {
+    padding: 6px 6px;
+    font-size: 0.74rem;
+  }
+}
 .admin-filters {
   display: flex;
   gap: 10px;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { squareEnv } from "@/lib/square";
+import { getSettings } from "@/lib/settings";
 import { CartProvider } from "@/components/order/CartProvider";
 import CheckoutForm from "@/components/order/CheckoutForm";
 
@@ -9,15 +10,17 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
   // App id + location id are public identifiers used by the Web Payments SDK on
   // the client (not secrets). Passed as props so we don't need NEXT_PUBLIC vars.
   const appId = process.env.SQUARE_APPLICATION_ID ?? "";
   const locationId = process.env.SQUARE_LOCATION_ID ?? "";
+  // The shop hours drive the delivery window (evaluated in the shop's timezone).
+  const { hours } = await getSettings();
 
   return (
     <CartProvider>
-      <CheckoutForm appId={appId} locationId={locationId} squareEnv={squareEnv} />
+      <CheckoutForm appId={appId} locationId={locationId} squareEnv={squareEnv} hours={hours} />
     </CartProvider>
   );
 }
