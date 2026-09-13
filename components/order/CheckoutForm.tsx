@@ -582,8 +582,7 @@ export default function CheckoutForm({
             className="mb-6 rounded-lg px-3 py-2 text-sm"
             style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
           >
-            🚚 Local delivery is available <strong>10 AM–2 PM</strong> while we&rsquo;re
-            open — pickup is available now.
+            🚚 Local delivery is available <strong>10 AM–2 PM</strong> while we&rsquo;re open.
           </p>
         )}
 
