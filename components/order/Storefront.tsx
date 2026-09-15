@@ -63,14 +63,27 @@ export default function Storefront({
   // at least one base (the wizard inherits the base from the category).
   function customizeFor(p: Product): CustomPrefill | null {
     if (!p.recipe) return null;
-    const baseIds = (p.categoryId && baseIdsByCategory.get(p.categoryId)) || [];
+    // The item's own base(s) win over the category's (a drink pinned to one base).
+    const baseIds =
+      p.baseIds && p.baseIds.length
+        ? p.baseIds
+        : (p.categoryId && baseIdsByCategory.get(p.categoryId)) || [];
     if (baseIds.length === 0) return null;
+    // The item's own sellable sizes/prices drive the wizard (not the custom
+    // product's), so lemonades show one 32 oz size, energy drinks their price, etc.
+    const sizes = p.variations
+      .filter((v) => v.available)
+      .map((v) => ({ id: v.id, name: v.name, priceCents: v.priceCents }));
+    if (sizes.length === 0) return null;
     return {
       productId: p.id,
       productName: p.name,
       baseIds,
       syrupIds: p.recipe.syrupIds,
       toppingIds: p.recipe.toppingIds,
+      sizes,
+      sugarFreeOnly: p.sugarFreeOnly,
+      regularOnly: p.regularOnly,
     };
   }
 

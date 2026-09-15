@@ -59,20 +59,36 @@ export default function ProductCard({
     (sellable[0] ?? product.variations[0])?.id,
   );
   const [justAdded, setJustAdded] = useState(false);
+  // Plain sugar-free-capable items (e.g. Classic Lemonade) get a Regular/Sugar-free
+  // pill, like the size pills. Only shown when the item opts in via `styleChoice`.
+  const [sugarFree, setSugarFree] = useState(false);
 
   const selected =
     product.variations.find((v) => v.id === variationId) ?? product.variations[0];
   const soldOut = !product.available;
   const canAdd = ordering && !soldOut && selected?.available;
   const canCustomize = ordering && !soldOut && !!product.recipe && !!onCustomize;
+  // A customizable item offers sugar-free unless it's regular-only; it offers
+  // both styles unless it's restricted to one. styleChoice items (plain Classic
+  // Lemonade) already carry both via their own pill.
+  const offersSugarFree =
+    (!!product.recipe || product.styleChoice) && !product.regularOnly;
+  const offersBothStyles =
+    (!!product.recipe || product.styleChoice) &&
+    !product.sugarFreeOnly &&
+    !product.regularOnly;
 
   function handleAdd() {
     if (!canAdd || !selected) return;
     add({
+      // A both-styles item makes Regular vs Sugar-free its own cart line.
+      lineId: offersBothStyles ? `${selected.id}:${sugarFree ? "sf" : "reg"}` : undefined,
       variationId: selected.id,
       productId: product.id,
       productName: product.name,
-      variationName: selected.name,
+      variationName: offersBothStyles
+        ? `${sugarFree ? "Sugar-free" : "Regular"} · ${selected.name}`
+        : selected.name,
       priceCents: selected.priceCents,
       imageUrl: product.imageUrl,
     });
@@ -113,15 +129,70 @@ export default function ProductCard({
 
       <div className="p-4 flex flex-col flex-1">
         <h3
-          className="text-lg"
+          className="text-lg flex items-center gap-1.5"
           style={{ fontFamily: "var(--font-fredoka)", color: "var(--charcoal)" }}
         >
           {product.name}
+          {offersSugarFree && (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              role="img"
+              aria-label="Sugar-free"
+              style={{ flex: "0 0 auto" }}
+            >
+              <title>Sugar-free</title>
+              <path
+                d="M13 3c0 5.5-3 8.5-7.5 8.5C4 11.5 3 10 3 8.5 3 5 6 3 13 3Z"
+                fill="#6fbf73"
+                stroke="#2f7d43"
+                strokeWidth="1"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5 11.5C6.5 9 8.5 7.5 11 6.5"
+                stroke="#2f7d43"
+                strokeWidth="1"
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
         </h3>
         {product.description && (
           <p className="mt-1 text-sm leading-snug" style={{ color: "var(--ash)" }}>
             {product.description}
           </p>
+        )}
+
+        {/* Regular / Sugar-free pill — any item offering both styles */}
+        {offersBothStyles && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {[
+              { sf: false, label: "Regular" },
+              { sf: true, label: "Sugar-free" },
+            ].map((o) => {
+              const active = sugarFree === o.sf;
+              return (
+                <button
+                  key={o.label}
+                  type="button"
+                  onClick={() => setSugarFree(o.sf)}
+                  className="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+                  style={{
+                    fontFamily: "var(--font-fredoka)",
+                    border: `1.5px solid ${active ? "var(--magenta)" : "var(--border)"}`,
+                    backgroundColor: active ? "var(--pink-soft)" : "var(--paper)",
+                    color: "var(--charcoal)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {/* Size selector (only when there's a real choice) */}

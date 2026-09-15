@@ -44,7 +44,7 @@ export default function CustomDrinkManager({
   bases: Variant[];
   syrups: Variant[];
   milks: Named[];
-  toppings: Named[];
+  toppings: Variant[];
 }) {
   const [tab, setTab] = useState<TabKey>("bases");
   const [adding, setAdding] = useState(false);
@@ -148,10 +148,12 @@ export default function CustomDrinkManager({
       {tab === "toppings" && (
         <div>
           {toppings.map((t) => (
-            <OptionRow
+            <VariantRow
               key={t.id}
               id={t.id}
               name={t.name}
+              availableRegular={t.availableRegular}
+              availableSugarFree={t.availableSugarFree}
               active={t.active}
               update={updateTopping}
               remove={deleteTopping}

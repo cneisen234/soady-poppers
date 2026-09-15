@@ -51,17 +51,38 @@ export async function getRecipeContexts(
     .select({
       id: products.id,
       recipe: products.recipe,
-      baseIds: categories.baseIds,
+      productBaseIds: products.baseIds,
+      catBaseIds: categories.baseIds,
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
     .where(inArray(products.id, ids));
   for (const r of rows) {
     if (!r.recipe) continue;
+    // The item's own base(s) win over the category's.
+    const baseIds =
+      r.productBaseIds && r.productBaseIds.length ? r.productBaseIds : r.catBaseIds ?? [];
     out.set(r.id, {
       freeSyrups: r.recipe.syrupIds.length,
-      baseIds: r.baseIds ?? [],
+      baseIds,
     });
+  }
+
+  // A sugar-free build swaps to the base's counterpart (Coke → Coke Zero), so the
+  // counterpart is an allowed base too. Add each allowed base's sugar-free id.
+  const allowed = [...new Set([...out.values()].flatMap((c) => c.baseIds))];
+  if (allowed.length) {
+    const cp = await db
+      .select({ id: customBases.id, sugarFreeId: customBases.sugarFreeId })
+      .from(customBases)
+      .where(inArray(customBases.id, allowed));
+    const bySf = new Map(cp.map((b) => [b.id, b.sugarFreeId]));
+    for (const c of out.values()) {
+      const extra = c.baseIds
+        .map((id) => bySf.get(id))
+        .filter((x): x is string => !!x);
+      if (extra.length) c.baseIds = [...new Set([...c.baseIds, ...extra])];
+    }
   }
   return out;
 }
@@ -87,7 +108,12 @@ export async function getCustomDrink(): Promise<CustomDrinkData | null> {
 
   if (!product || sizes.length === 0 || bases.length === 0) return null;
 
-  const variant = (r: typeof bases[number]): CustomVariant => ({
+  const variant = (r: {
+    id: string;
+    name: string;
+    availableRegular: boolean;
+    availableSugarFree: boolean;
+  }): CustomVariant => ({
     id: r.id,
     name: r.name,
     availableRegular: r.availableRegular,
@@ -96,9 +122,14 @@ export async function getCustomDrink(): Promise<CustomDrinkData | null> {
 
   return {
     sizes,
-    bases: bases.map(variant),
+    bases: bases.map((b) => ({ ...variant(b), sugarFreeId: b.sugarFreeId })),
     syrups: syrups.map(variant),
-    toppings: toppings.map((t) => ({ id: t.id, name: t.name })),
+    toppings: toppings.map((t) => ({
+      id: t.id,
+      name: t.name,
+      availableRegular: t.availableRegular,
+      availableSugarFree: t.availableSugarFree,
+    })),
     milks: milks.map((m) => ({ id: m.id, name: m.name })),
     pricing: {
       freeSyrups: settings.customFreeSyrups,

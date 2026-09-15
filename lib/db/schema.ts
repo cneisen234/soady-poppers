@@ -97,6 +97,18 @@ export const products = pgTable(
     // Null = not customizable (shows plain "Add", e.g. lattes). Drives the
     // "Customize" wizard, pre-filled with these ingredients.
     recipe: jsonb("recipe").$type<ProductRecipe>(),
+    // Per-item base override (custom_bases ids), mirroring categories.base_ids.
+    // Null = inherit the category's bases; set = this item's own base(s), so a
+    // drink in a two-base category can be pinned to one (e.g. Alani only).
+    baseIds: jsonb("base_ids").$type<string[]>(),
+    // Shows a Regular/Sugar-free pill on the storefront card (plain items like
+    // Classic Lemonade that aren't customized through the wizard).
+    styleChoice: boolean("style_choice").notNull().default(false),
+    // Item-level style override (exception to the base deciding both). Only one
+    // should be true; both false = the base decides. The wizard hides the other
+    // style accordingly.
+    sugarFreeOnly: boolean("sugar_free_only").notNull().default(false),
+    regularOnly: boolean("regular_only").notNull().default(false),
     // Tax override: null = inherit the global settings rate, 0 = exempt,
     // any other value = a custom rate in basis points for this product.
     taxRateBps: integer("tax_rate_bps"),
@@ -286,6 +298,9 @@ export const customBases = pgTable("custom_bases", {
   // sugar-free choice filters the base list to the matching variant.
   availableRegular: boolean("available_regular").notNull().default(true),
   availableSugarFree: boolean("available_sugar_free").notNull().default(false),
+  // The sugar-free counterpart of this (regular) base — e.g. Coke → Coke Zero.
+  // The sugar-free toggle swaps to this base and back. Null = no counterpart.
+  sugarFreeId: uuid("sugar_free_id"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -316,6 +331,10 @@ export const customMilks = pgTable("custom_milks", {
 export const customToppings = pgTable("custom_toppings", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // Like bases/syrups, a topping can be offered regular and/or sugar-free. Both
+  // default true (available for either) — only owner-flagged ones are restricted.
+  availableRegular: boolean("available_regular").notNull().default(true),
+  availableSugarFree: boolean("available_sugar_free").notNull().default(true),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

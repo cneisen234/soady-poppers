@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "style_choice" boolean DEFAULT false NOT NULL;

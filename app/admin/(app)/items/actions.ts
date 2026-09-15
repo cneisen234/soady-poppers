@@ -73,6 +73,10 @@ export async function updateProduct(form: FormData): Promise<void> {
       trackInventory: bool(form, "trackInventory"),
       stock: Math.max(0, Number.parseInt(field(form, "stock"), 10) || 0),
       recipe: parseRecipe(form),
+      // Item-level style restriction; mutually exclusive (regular wins only if
+      // sugar-free isn't also set — the editor keeps them exclusive anyway).
+      sugarFreeOnly: bool(form, "sugarFreeOnly"),
+      regularOnly: bool(form, "sugarFreeOnly") ? false : bool(form, "regularOnly"),
       updatedAt: new Date(),
     })
     .where(eq(products.id, id));

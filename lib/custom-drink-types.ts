@@ -39,13 +39,15 @@ export type CustomVariant = {
   name: string;
   availableRegular: boolean;
   availableSugarFree: boolean;
+  /** Bases only: the sugar-free counterpart to swap to (Coke → Coke Zero). */
+  sugarFreeId?: string | null;
 };
 export type CustomDrinkData = {
   sizes: CustomSize[];
   bases: CustomVariant[];
   syrups: CustomVariant[];
-  /** Creams & toppings pool — free, no style restriction. */
-  toppings: { id: string; name: string }[];
+  /** Creams & toppings pool — free; a topping can be limited to one style. */
+  toppings: { id: string; name: string; availableRegular: boolean; availableSugarFree: boolean }[];
   milks: { id: string; name: string }[];
   pricing: {
     freeSyrups: number;
@@ -66,4 +68,10 @@ export type CustomPrefill = {
   baseIds: string[];
   syrupIds: string[];
   toppingIds: string[];
+  /** The item's own sizes/prices (from the admin), used instead of the custom
+   * product's sizes so the wizard reflects what's actually available. */
+  sizes: CustomSize[];
+  /** Item-level style restriction: force sugar-free (hide regular) or vice versa. */
+  sugarFreeOnly?: boolean;
+  regularOnly?: boolean;
 };

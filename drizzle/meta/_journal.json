@@ -134,6 +134,76 @@
       "when": 1789172393234,
       "tag": "0018_seed_product_recipes",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789486631326,
+      "tag": "0019_product_base_override",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789486670200,
+      "tag": "0020_seed_item_base_locks",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789488054920,
+      "tag": "0021_base_sugarfree_counterpart",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789488076949,
+      "tag": "0022_map_base_counterparts",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789488689146,
+      "tag": "0023_product_style_choice",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789488706246,
+      "tag": "0024_seed_lemonade_style_choice",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789489987161,
+      "tag": "0025_item_style_override",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789490020134,
+      "tag": "0026_seed_sugar_free_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789490435120,
+      "tag": "0027_topping_style_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789490790755,
+      "tag": "0028_seed_topping_style",
+      "breakpoints": true
     }
   ]
 }

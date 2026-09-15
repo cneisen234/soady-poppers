@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "./CartProvider";
 import { formatCents } from "@/lib/money";
 import type { CustomDrinkData, CustomPrefill } from "@/lib/custom-drink-types";
@@ -29,8 +29,12 @@ export default function CustomDrinkWizard({
   onClose: () => void;
 }) {
   const { add } = useCart();
-  const { sizes, bases, syrups, toppings, milks, pricing } = data;
+  const { bases, syrups, toppings, milks, pricing } = data;
   const customizing = !!prefill;
+
+  // A customized menu item uses its OWN sizes/prices (from the admin); build-your-
+  // own uses the custom product's sizes.
+  const sizes = prefill ? prefill.sizes : data.sizes;
 
   // Included flavors are free: the recipe's count when customizing, else the
   // shop's global allowance. (The server re-derives this — never trusted here.)
@@ -71,9 +75,46 @@ export default function CustomDrinkWizard({
     () => syrups.filter((s) => (sugarFree ? s.availableSugarFree : s.availableRegular)),
     [syrups, sugarFree],
   );
+  // Toppings limited to the wrong style are hidden (e.g. coconut cold foam is
+  // regular only, so it drops out when sugar-free is chosen).
+  const availToppings = useMemo(
+    () => toppings.filter((t) => (sugarFree ? t.availableSugarFree : t.availableRegular)),
+    [toppings, sugarFree],
+  );
+
+  // If a selected topping is no longer available in the chosen style, drop it.
+  useEffect(() => {
+    setToppingIds((prev) => {
+      const ok = prev.filter((id) => availToppings.some((t) => t.id === id));
+      return ok.length === prev.length ? prev : ok;
+    });
+  }, [availToppings]);
 
   // The locked base (customize) so we can name it and gate sugar-free.
   const lockedBase = customizing ? bases.find((b) => b.id === baseId) : undefined;
+
+  // Sugar-free swaps the chosen base to its counterpart (Coke → Coke Zero). The
+  // effective base is what we name in the summary and send to the server.
+  const chosenBase = bases.find((b) => b.id === baseId);
+  const effectiveBaseId =
+    sugarFree && chosenBase?.sugarFreeId ? chosenBase.sugarFreeId : baseId;
+
+  // Which styles are offered: the locked base's availability, narrowed by any
+  // item-level restriction (sugar-free only / regular only). Unavailable ones are
+  // hidden (not disabled). Build-your-own picks the style first, so both show.
+  const baseAllowsRegular = !customizing || (lockedBase?.availableRegular ?? true);
+  const baseAllowsSugarFree =
+    !customizing || !!(lockedBase && (lockedBase.availableSugarFree || lockedBase.sugarFreeId));
+  const showRegular = baseAllowsRegular && !prefill?.sugarFreeOnly;
+  const showSugarFree = baseAllowsSugarFree && !prefill?.regularOnly;
+
+  // When only one style is offered, select it so the step is complete and the
+  // (hidden) other option is never in play.
+  useEffect(() => {
+    if (!customizing) return;
+    if (!showRegular && sugarFree !== true) setSugarFree(true);
+    else if (!showSugarFree && sugarFree !== false) setSugarFree(false);
+  }, [customizing, showRegular, showSugarFree, sugarFree]);
 
   const size = sizes.find((s) => s.id === sizeId);
   const paidSyrups = Math.max(0, syrupIds.length - freeSyrups);
@@ -118,7 +159,7 @@ export default function CustomDrinkWizard({
 
   function handleAdd() {
     if (!size || !baseId || syrupIds.length < 1) return;
-    const baseName = bases.find((b) => b.id === baseId)?.name ?? "";
+    const baseName = bases.find((b) => b.id === effectiveBaseId)?.name ?? "";
     const syrupNames = syrupIds
       .map((id) => availSyrups.find((s) => s.id === id)?.name)
       .filter(Boolean);
@@ -147,7 +188,7 @@ export default function CustomDrinkWizard({
       custom: {
         sizeId: size.id,
         sugarFree: !!sugarFree,
-        baseId,
+        baseId: effectiveBaseId,
         syrupIds,
         toppingIds,
         caffeine,
@@ -228,20 +269,18 @@ export default function CustomDrinkWizard({
                       ))}
                     </ChipGroup>
                   </Section>
+                  {showRegular && showSugarFree && (
                   <Section label="Regular or sugar-free?">
                     <ChipGroup>
                       <Chip active={sugarFree === false} onClick={() => chooseStyle(false)}>
                         Regular
                       </Chip>
-                      <Chip
-                        active={sugarFree === true}
-                        disabled={!!lockedBase && !lockedBase.availableSugarFree}
-                        onClick={() => chooseStyle(true)}
-                      >
+                      <Chip active={sugarFree === true} onClick={() => chooseStyle(true)}>
                         Sugar-free
                       </Chip>
                     </ChipGroup>
                   </Section>
+                  )}
                 </div>
               )}
 
@@ -287,10 +326,10 @@ export default function CustomDrinkWizard({
 
               {current === "addons" && (
                 <div className="space-y-5">
-                  {toppings.length > 0 && (
+                  {availToppings.length > 0 && (
                     <Section label="Creams & toppings (free)">
                       <ChipGroup>
-                        {toppings.map((t) => (
+                        {availToppings.map((t) => (
                           <Chip
                             key={t.id}
                             active={toppingIds.includes(t.id)}

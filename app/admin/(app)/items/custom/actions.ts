@@ -102,7 +102,13 @@ export async function updateTopping(form: FormData): Promise<void> {
   if (!id || !name) return;
   await db
     .update(customToppings)
-    .set({ name, active: on(form, "active"), updatedAt: new Date() })
+    .set({
+      name,
+      availableRegular: form.get("regular") === "1",
+      availableSugarFree: form.get("sugarFree") === "1",
+      active: on(form, "active"),
+      updatedAt: new Date(),
+    })
     .where(eq(customToppings.id, id));
   revalidatePath("/admin/items");
 }

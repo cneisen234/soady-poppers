@@ -66,12 +66,24 @@ export default async function EditItemPage({
           taxRateBps: product.taxRateBps,
           trackInventory: product.trackInventory,
           stock: product.stock,
+          sugarFreeOnly: product.sugarFreeOnly,
+          regularOnly: product.regularOnly,
         }}
         categories={catsWithBases}
         recipe={product.recipe ?? null}
         pools={{
-          syrups: syrupRows.map((s) => ({ id: s.id, name: s.name })),
-          toppings: toppingRows.map((t) => ({ id: t.id, name: t.name })),
+          syrups: syrupRows.map((s) => ({
+            id: s.id,
+            name: s.name,
+            availableRegular: s.availableRegular,
+            availableSugarFree: s.availableSugarFree,
+          })),
+          toppings: toppingRows.map((t) => ({
+            id: t.id,
+            name: t.name,
+            availableRegular: t.availableRegular,
+            availableSugarFree: t.availableSugarFree,
+          })),
         }}
       />
 

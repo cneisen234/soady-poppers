@@ -220,15 +220,18 @@ export async function validateLines(lines: CheckoutLine[]): Promise<ValidationRe
     for (const line of lines) {
       const r = rows.get(line.variationId);
       if (!r || soldOut.has(line.variationId)) continue;
-      const isCustomProduct = r.pId === CUSTOM_PRODUCT_ID;
-      if (isCustomProduct && !line.custom) {
+      const isBuildYourOwn = r.pId === CUSTOM_PRODUCT_ID;
+      const rc = line.custom?.recipeProductId;
+      // Build-your-own carries a build on the custom product; a customized menu
+      // item carries one on its OWN variation (recipeProductId must be that item).
+      const customizable = isBuildYourOwn || (!!rc && rc === r.pId);
+      if (isBuildYourOwn && !line.custom) {
         problems.push("A custom drink is missing its build.");
         soldOut.add(line.variationId);
-      } else if (line.custom && !isCustomProduct) {
+      } else if (line.custom && !customizable) {
         problems.push("That item can't be customized.");
         soldOut.add(line.variationId);
       } else if (line.custom) {
-        const rc = line.custom.recipeProductId;
         if (!customData) {
           problems.push("Custom drinks aren't available right now.");
           soldOut.add(line.variationId);
@@ -389,11 +392,15 @@ function computeTotals(
   for (const line of lines) {
     const r = rows.get(line.variationId);
     if (!r || line.qty <= 0) continue;
-    // Custom drink: unit price = the size's base price + validated add-ons.
+    // Custom drink: unit price = the variation's base price + validated add-ons.
+    // For a customized menu item the base is the ITEM's own variation price (set
+    // in the admin), not the custom product's; build-your-own uses the custom
+    // product's size price.
     let unitPrice = r.price;
     let customSummary: string | undefined;
-    if (line.custom && customData && r.pId === CUSTOM_PRODUCT_ID) {
-      const rc = line.custom.recipeProductId;
+    const rc = line.custom?.recipeProductId;
+    const customizable = r.pId === CUSTOM_PRODUCT_ID || (!!rc && rc === r.pId);
+    if (line.custom && customData && customizable) {
       const addon = resolveCustomAddon(line.custom, customData, rc ? recipes.get(rc) : undefined);
       if (addon.ok) {
         unitPrice = r.price + addon.addonCents;

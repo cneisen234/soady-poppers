@@ -5,7 +5,7 @@ import { updateProduct } from "../actions";
 import { useAutosave, SaveStatus } from "../../autosave";
 
 type Cat = { id: string; name: string; baseNames: string[] };
-type Named = { id: string; name: string };
+type Named = { id: string; name: string; availableRegular: boolean; availableSugarFree: boolean };
 type Recipe = { syrupIds: string[]; toppingIds: string[] };
 
 type ProductLite = {
@@ -18,6 +18,8 @@ type ProductLite = {
   taxRateBps: number | null;
   trackInventory: boolean;
   stock: number;
+  sugarFreeOnly: boolean;
+  regularOnly: boolean;
 };
 
 type Fields = {
@@ -32,6 +34,8 @@ type Fields = {
   stock: string;
   syrupIds: string[];
   toppingIds: string[];
+  sugarFreeOnly: boolean;
+  regularOnly: boolean;
 };
 
 export default function ProductDetailsForm({
@@ -59,6 +63,8 @@ export default function ProductDetailsForm({
     stock: String(product.stock),
     syrupIds: recipe?.syrupIds ?? [],
     toppingIds: recipe?.toppingIds ?? [],
+    sugarFreeOnly: product.sugarFreeOnly,
+    regularOnly: product.regularOnly,
   });
   const latest = useRef(f);
   latest.current = f;
@@ -81,6 +87,8 @@ export default function ProductDetailsForm({
       fd.set("stock", v.stock);
       fd.set("recipeSyrups", JSON.stringify(v.syrupIds));
       fd.set("recipeToppings", JSON.stringify(v.toppingIds));
+      if (v.sugarFreeOnly) fd.set("sugarFreeOnly", "on");
+      if (v.regularOnly) fd.set("regularOnly", "on");
       await updateProduct(fd);
     });
   }
@@ -212,16 +220,42 @@ export default function ProductDetailsForm({
 
       <fieldset className="admin-fieldset">
         <legend>Customize (recipe)</legend>
+        <div className="admin-grid2">
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              checked={f.sugarFreeOnly}
+              onChange={(e) => {
+                update("sugarFreeOnly", e.target.checked);
+                if (e.target.checked) update("regularOnly", false);
+              }}
+            />
+            <span>Sugar-free only</span>
+          </label>
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              checked={f.regularOnly}
+              onChange={(e) => {
+                update("regularOnly", e.target.checked);
+                if (e.target.checked) update("sugarFreeOnly", false);
+              }}
+            />
+            <span>Regular only</span>
+          </label>
+        </div>
         <ChipMulti
           label="Flavors (included)"
           options={pools.syrups}
           selected={f.syrupIds}
+          restrict={f.sugarFreeOnly ? "sugarFree" : f.regularOnly ? "regular" : null}
           onToggle={(id) => toggleId("syrupIds", id)}
         />
         <ChipMulti
           label="Creams & toppings (included)"
           options={pools.toppings}
           selected={f.toppingIds}
+          restrict={f.sugarFreeOnly ? "sugarFree" : f.regularOnly ? "regular" : null}
           onToggle={(id) => toggleId("toppingIds", id)}
         />
       </fieldset>
@@ -233,11 +267,15 @@ function ChipMulti({
   label,
   options,
   selected,
+  restrict,
   onToggle,
 }: {
   label: string;
   options: Named[];
   selected: string[];
+  // When the item is sugar-free/regular only, options that don't offer that style
+  // are disabled (can't be part of the recipe).
+  restrict: "sugarFree" | "regular" | null;
   onToggle: (id: string) => void;
 }) {
   return (
@@ -247,12 +285,29 @@ function ChipMulti({
         {options.length === 0 && <span className="admin-sub">None in the pool yet.</span>}
         {options.map((o) => {
           const on = selected.includes(o.id);
+          const disabled =
+            (restrict === "sugarFree" && !o.availableSugarFree) ||
+            (restrict === "regular" && !o.availableRegular);
           return (
             <button
               key={o.id}
               type="button"
               className={`admin-chip ${on ? "on" : ""}`}
               aria-pressed={on}
+              disabled={disabled}
+              style={
+                disabled
+                  ? {
+                      // Same "locked" language as other disabled controls: dashed
+                      // border, muted fill/text, no shadow.
+                      backgroundColor: "var(--border)",
+                      color: "var(--ash)",
+                      border: "2px dashed var(--stone)",
+                      boxShadow: "none",
+                      cursor: "not-allowed",
+                    }
+                  : undefined
+              }
               onClick={() => onToggle(o.id)}
             >
               {o.name}

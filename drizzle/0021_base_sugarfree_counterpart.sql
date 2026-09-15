@@ -1,0 +1,1 @@
+ALTER TABLE "custom_bases" ADD COLUMN "sugar_free_id" uuid;

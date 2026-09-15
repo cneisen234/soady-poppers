@@ -46,7 +46,13 @@ export default async function CustomDrinkPanel() {
           active: s.active,
         }))}
         milks={milks.map((m) => ({ id: m.id, name: m.name, active: m.active }))}
-        toppings={toppings.map((t) => ({ id: t.id, name: t.name, active: t.active }))}
+        toppings={toppings.map((t) => ({
+          id: t.id,
+          name: t.name,
+          availableRegular: t.availableRegular,
+          availableSugarFree: t.availableSugarFree,
+          active: t.active,
+        }))}
       />
     </fieldset>
     </>

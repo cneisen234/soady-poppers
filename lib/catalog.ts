@@ -31,6 +31,14 @@ export type Product = {
   /** Set when this item can be customized (included flavors + toppings). The base
    * is inherited from the category — see the matching category's baseIds. */
   recipe?: ProductRecipe;
+  /** Per-item base override; when set, use these instead of the category's bases
+   * (a drink pinned to one base, e.g. Alani only). */
+  baseIds?: string[];
+  /** Show a Regular/Sugar-free pill on the card (e.g. Classic Lemonade). */
+  styleChoice?: boolean;
+  /** Item-level style restriction (exception to the base offering both). */
+  sugarFreeOnly?: boolean;
+  regularOnly?: boolean;
 };
 
 export type Catalog = {
@@ -85,6 +93,10 @@ export async function listCatalog(): Promise<Catalog> {
         variations.some((v) => v.available),
       variations,
       recipe: p.recipe ?? undefined,
+      baseIds: p.baseIds ?? undefined,
+      styleChoice: p.styleChoice || undefined,
+      sugarFreeOnly: p.sugarFreeOnly || undefined,
+      regularOnly: p.regularOnly || undefined,
     };
   });
 
