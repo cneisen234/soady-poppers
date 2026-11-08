@@ -16,6 +16,7 @@ import {
   categories,
 } from "@/lib/db/schema";
 import { getSettings } from "@/lib/settings";
+import { bestDiscount, loadLiveDiscounts } from "@/lib/product-discounts";
 import type { CustomSize, CustomVariant, CustomDrinkData } from "@/lib/custom-drink-types";
 
 // Fixed id, seeded in 0010_seed_custom_drink_product — so nothing looks it up by name.
@@ -90,7 +91,7 @@ export async function getRecipeContexts(
 /** Everything the storefront wizard needs. Returns null when the builder can't be
  * offered (no sellable sizes, or no active bases). */
 export async function getCustomDrink(): Promise<CustomDrinkData | null> {
-  const [product, bases, syrups, toppings, milks, settings] = await Promise.all([
+  const [product, bases, syrups, toppings, milks, settings, discounts] = await Promise.all([
     db.query.products.findFirst({
       where: (p, { eq: e, and: a }) => a(e(p.isCustom, true), e(p.available, true), e(p.hidden, false)),
       with: { variations: { orderBy: (v, { asc: as }) => [as(v.sort), as(v.name)] } },
@@ -100,11 +101,17 @@ export async function getCustomDrink(): Promise<CustomDrinkData | null> {
     db.select().from(customToppings).where(eq(customToppings.active, true)).orderBy(asc(customToppings.name)),
     db.select().from(customMilks).where(eq(customMilks.active, true)).orderBy(asc(customMilks.name)),
     getSettings(),
+    loadLiveDiscounts(),
   ]);
 
+  // Sizes at what they cost now: a live product discount lowers the base price
+  // (lib/product-discounts; checkout re-prices it the same way).
   const sizes = (product?.variations ?? [])
     .filter((v) => v.available && !v.soldOut)
-    .map((v) => ({ id: v.id, name: v.name, priceCents: v.priceCents }));
+    .map((v) => {
+      const sale = product ? bestDiscount({ variationId: v.id, productId: product.id, categoryId: product.categoryId, basePriceCents: v.priceCents }, discounts) : null;
+      return { id: v.id, name: v.name, priceCents: v.priceCents - (sale?.offPerUnitCents ?? 0) };
+    });
 
   if (!product || sizes.length === 0 || bases.length === 0) return null;
 

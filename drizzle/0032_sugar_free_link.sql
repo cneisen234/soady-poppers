@@ -1,0 +1,1 @@
+ALTER TABLE "custom_bases" ADD CONSTRAINT "custom_bases_sugar_free_id_custom_bases_id_fk" FOREIGN KEY ("sugar_free_id") REFERENCES "public"."custom_bases"("id") ON DELETE set null ON UPDATE no action;

@@ -86,7 +86,7 @@ export default async function Home() {
               </h1>
               <p className="fade-in-up stagger-2 mt-6 text-lg md:text-xl max-w-md mx-auto lg:mx-0" style={{ color: 'var(--ash)' }}>
                 Hand-crafted <strong style={{ color: 'var(--magenta)' }}>dirty sodas</strong>, fresh-squeezed{' '}
-                <strong style={{ color: 'var(--lemon-deep)' }}>lemonade</strong> & Big Poppa's{' '}
+                <strong style={{ color: 'var(--lemon-deep)' }}>lemonade</strong> & Big Poppa&apos;s{' '}
                 <strong style={{ color: 'var(--pink-deep)' }}>gourmet kettle corn</strong>. Made fresh, made fun.
               </p>
               <div className="fade-in-up stagger-3 mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">

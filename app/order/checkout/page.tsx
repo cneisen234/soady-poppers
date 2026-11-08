@@ -15,12 +15,12 @@ export default async function CheckoutPage() {
   // the client (not secrets). Passed as props so we don't need NEXT_PUBLIC vars.
   const appId = process.env.SQUARE_APPLICATION_ID ?? "";
   const locationId = process.env.SQUARE_LOCATION_ID ?? "";
-  // The shop hours drive the delivery window (evaluated in the shop's timezone).
-  const { hours } = await getSettings();
+  // The shop hours and the delivery settings drive the delivery window (evaluated in the shop's timezone).
+  const { hours, deliveryEnabled, deliveryHours } = await getSettings();
 
   return (
     <CartProvider>
-      <CheckoutForm appId={appId} locationId={locationId} squareEnv={squareEnv} hours={hours} />
+      <CheckoutForm appId={appId} locationId={locationId} squareEnv={squareEnv} hours={hours} deliveryEnabled={deliveryEnabled} deliveryHours={deliveryHours} />
     </CartProvider>
   );
 }

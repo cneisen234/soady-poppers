@@ -217,6 +217,7 @@ export default function ProductCard({
                   }}
                 >
                   {v.name} · {v.priceLabel}
+                  {v.originalPriceLabel ? <s className="price-was ml-1">{v.originalPriceLabel}</s> : null}
                 </button>
               );
             })}
@@ -224,11 +225,19 @@ export default function ProductCard({
         )}
 
         <div className="mt-auto pt-4 flex items-center justify-between gap-3">
-          <span
-            className="price-tag"
-            style={{ fontSize: "0.95rem" }}
-          >
-            {selected?.priceLabel}
+          <span className="flex flex-wrap items-center gap-1.5">
+            {/* A live product discount: the sale price, the regular price struck through. */}
+            <span className="price-tag" style={{ fontSize: "0.95rem" }}>
+              {selected?.priceLabel}
+            </span>
+            {selected?.originalPriceLabel ? (
+              <>
+                <s className="price-was text-sm" aria-label={`Regular price ${selected.originalPriceLabel}`}>
+                  {selected.originalPriceLabel}
+                </s>
+                <span className="sale-chip">{selected.saleName}</span>
+              </>
+            ) : null}
           </span>
           <div className="flex items-center gap-2">
             {canCustomize && (

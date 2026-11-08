@@ -2,18 +2,28 @@
 //
 // Returns a flat Catalog shape the storefront and checkout consume. The catalog
 // is loaded from scripts/menu-data.ts via `npm run db:menu` (scripts/import-menu).
+// Prices are what the customer pays right now: a live product discount
+// (lib/product-discounts) lowers a size's price, and the original is kept to show
+// struck through.
 //
 // Server-only (imports lib/db).
 
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import type { ProductRecipe } from "@/lib/custom-drink-types";
+import { bestDiscount, loadLiveDiscounts } from "@/lib/product-discounts";
 
 export type ProductVariation = {
   id: string;
   name: string;
+  /** What it costs now (after any product discount). */
   priceCents: number;
   priceLabel: string;
+  /** Set while a product discount applies: the regular price, shown struck through. */
+  originalPriceCents?: number;
+  originalPriceLabel?: string;
+  /** The discount's name, e.g. "Latte Day". */
+  saleName?: string;
   /** False when this size is marked sold out or unavailable. */
   available: boolean;
 };
@@ -54,7 +64,7 @@ export type Catalog = {
  * bottom), matching the old behavior.
  */
 export async function listCatalog(): Promise<Catalog> {
-  const [cats, prods] = await Promise.all([
+  const [cats, prods, discounts] = await Promise.all([
     db.query.categories.findMany({
       orderBy: (c, { asc }) => [asc(c.sort), asc(c.name)],
     }),
@@ -68,16 +78,22 @@ export async function listCatalog(): Promise<Catalog> {
         images: { orderBy: (img, { asc }) => [asc(img.sort)] },
       },
     }),
+    loadLiveDiscounts(),
   ]);
 
   const products: Product[] = prods.map((p) => {
-    const variations: ProductVariation[] = p.variations.map((v) => ({
-      id: v.id,
-      name: v.name,
-      priceCents: v.priceCents,
-      priceLabel: formatCents(v.priceCents),
-      available: v.available && !v.soldOut,
-    }));
+    const variations: ProductVariation[] = p.variations.map((v) => {
+      const sale = bestDiscount({ variationId: v.id, productId: p.id, categoryId: p.categoryId, basePriceCents: v.priceCents }, discounts);
+      const priceCents = v.priceCents - (sale?.offPerUnitCents ?? 0);
+      return {
+        id: v.id,
+        name: v.name,
+        priceCents,
+        priceLabel: formatCents(priceCents),
+        ...(sale ? { originalPriceCents: v.priceCents, originalPriceLabel: formatCents(v.priceCents), saleName: sale.name } : {}),
+        available: v.available && !v.soldOut,
+      };
+    });
 
     return {
       id: p.id,

@@ -1,8 +1,7 @@
 import Link from "next/link";
 
 // Root 404 — shown for any unmatched URL and for notFound() calls. It renders
-// inside the root layout, so the storefront chrome (nav/footer) frames it on
-// public routes while HideOnAdmin strips it on /admin, keeping admin 404s clean.
+// inside the root layout, so the storefront chrome (nav/footer) frames it.
 // The "0" of 404 is a fizzing soda cup to keep it on-brand.
 export default function NotFound() {
   return (

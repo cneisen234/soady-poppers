@@ -38,14 +38,14 @@ const FULL_DAY_NAMES = [
 function fmtHour(h: number): string {
   const hour = Math.floor(h) % 12 || 12;
   const mins = Math.round((h - Math.floor(h)) * 60);
-  const suffix = h >= 12 ? "pm" : "am";
+  const suffix = h % 24 >= 12 ? "pm" : "am"; // 24 (midnight, a closing time) is "12am", not "12pm"
   return mins ? `${hour}:${String(mins).padStart(2, "0")}${suffix}` : `${hour}${suffix}`;
 }
 
 function fmtHour12(h: number): string {
   const hour = Math.floor(h) % 12 || 12;
   const mins = Math.round((h - Math.floor(h)) * 60);
-  const ap = h >= 12 ? "PM" : "AM";
+  const ap = h % 24 >= 12 ? "PM" : "AM"; // 24 (midnight, a closing time) is "12 AM", not "12 PM"
   return mins ? `${hour}:${String(mins).padStart(2, "0")} ${ap}` : `${hour} ${ap}`;
 }
 
@@ -108,16 +108,35 @@ export function getOpenStatus(now: Date, hours: WeekHours = DEFAULT_HOURS): Open
   return { open: false, short: "Closed", headline: "CLOSED", script: "See you soon", sub: "" };
 }
 
-// Local delivery runs only inside the driver's window (10 AM–2 PM) AND while the
-// shop is open. Evaluated in SHOP_TIME_ZONE — like getOpenStatus — so it's correct
-// no matter where it runs (the UTC server or any customer's browser, in any tz).
-export const DELIVERY_OPEN_HOUR = 10;
-export const DELIVERY_CLOSE_HOUR = 14;
+// Local delivery runs only while it's switched on, inside the driver's hours for
+// the day, AND while the shop is open (all set in Pilot Light). Evaluated in
+// SHOP_TIME_ZONE — like getOpenStatus — so it's correct no matter where it runs
+// (the UTC server or any customer's browser, in any tz).
+export const DEFAULT_DELIVERY_HOURS: WeekHours = {
+  0: { open: 10, close: 14 },
+  1: { open: 10, close: 14 },
+  2: { open: 10, close: 14 },
+  3: { open: 10, close: 14 },
+  4: { open: 10, close: 14 },
+  5: { open: 10, close: 14 },
+  6: { open: 10, close: 14 },
+};
 
-export function deliveryOpenNow(now: Date, hours: WeekHours = DEFAULT_HOURS): boolean {
-  const { decimal } = shopNow(now);
-  const inWindow = decimal >= DELIVERY_OPEN_HOUR && decimal < DELIVERY_CLOSE_HOUR;
+export type Delivery = { enabled: boolean; hours: WeekHours };
+
+export function deliveryOpenNow(now: Date, hours: WeekHours = DEFAULT_HOURS, delivery: Delivery = { enabled: true, hours: DEFAULT_DELIVERY_HOURS }): boolean {
+  if (!delivery.enabled) return false;
+  const { day, decimal } = shopNow(now);
+  const window = delivery.hours[day];
+  const inWindow = Boolean(window) && decimal >= window!.open && decimal < window!.close;
   return inWindow && getOpenStatus(now, hours).open;
+}
+
+/** Today's delivery hours, e.g. "10 AM–2 PM" (null when there's no delivery today or it's switched off). */
+export function deliveryWindowToday(now: Date, delivery: Delivery): string | null {
+  if (!delivery.enabled) return null;
+  const window = delivery.hours[shopNow(now).day];
+  return window ? `${fmtHour12(window.open)}–${fmtHour12(window.close)}` : null;
 }
 
 export type HoursRow = { label: string; value: string; closed?: boolean };

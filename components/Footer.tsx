@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import type { SiteFooterColumn } from '@/lib/pilot-light';
 import Image from 'next/image';
 import { shop } from '@/lib/shop';
 import { formatHours, type WeekHours } from '@/lib/status';
 
-export default function Footer({ hours }: { hours?: WeekHours }) {
+export default function Footer({ hours, columns }: { hours?: WeekHours; columns: SiteFooterColumn[] }) {
   const hoursDisplay = formatHours(hours);
   return (
     <footer className="relative overflow-hidden mt-auto" style={{ backgroundColor: 'var(--teal-deep)' }}>
@@ -56,38 +57,39 @@ export default function Footer({ hours }: { hours?: WeekHours }) {
             </Link>
           </div>
 
-          {/* Explore */}
-          <div className="md:col-span-3">
-            <h4 className="text-sm font-bold uppercase tracking-[0.16em] mb-4" style={{ color: 'var(--bone)', fontFamily: 'var(--font-fredoka)' }}>
-              Explore
-            </h4>
-            <ul className="space-y-2.5 text-sm">
-              {[
-                { href: '/menu', label: 'The Menu' },
-                { href: '/big-poppas', label: "Big Poppa's Kettle Corn" },
-                { href: '/about', label: 'Our Story' },
-                { href: '/visit', label: 'Visit & Hours' },
-                { href: shop.facebook, label: 'Facebook', external: true },
-              ].map((l) => (
-                <li key={l.href}>
-                  {'external' in l && l.external ? (
-                    <a
-                      href={l.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="transition-colors hover:underline"
-                      style={{ color: 'var(--bone)', opacity: 0.78 }}
-                    >
-                      {l.label}
-                    </a>
-                  ) : (
-                    <Link href={l.href} className="transition-colors hover:underline" style={{ color: 'var(--bone)', opacity: 0.78 }}>
-                      {l.label}
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
+          {/* The header's links (the site module's footer columns), then Facebook */}
+          <div className="md:col-span-3 space-y-8">
+            {columns.map((c, ci) => (
+              <div key={c.title}>
+                <h4 className="text-sm font-bold uppercase tracking-[0.16em] mb-4" style={{ color: 'var(--bone)', fontFamily: 'var(--font-fredoka)' }}>
+                  {c.title}
+                </h4>
+                <ul className="space-y-2.5 text-sm">
+                  {[
+                    ...c.links,
+                    ...(ci === 0 ? [{ href: shop.facebook, label: 'Facebook', external: true }] : []),
+                  ].map((l) => (
+                    <li key={l.href}>
+                      {'external' in l && l.external ? (
+                        <a
+                          href={l.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="transition-colors hover:underline"
+                          style={{ color: 'var(--bone)', opacity: 0.78 }}
+                        >
+                          {l.label}
+                        </a>
+                      ) : (
+                        <Link href={l.href} className="transition-colors hover:underline" style={{ color: 'var(--bone)', opacity: 0.78 }}>
+                          {l.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
 
           {/* Contact + hours */}

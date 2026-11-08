@@ -8,16 +8,12 @@ import { shop } from '@/lib/shop';
 import OpenStatus from './OpenStatus';
 import type { WeekHours } from '@/lib/status';
 
-const links = [
-  { href: '/', label: 'Home' },
-  { href: '/menu', label: 'Menu' },
-  { href: '/order', label: 'Order' },
-  { href: '/big-poppas', label: "Big Poppa's" },
-  { href: '/about', label: 'Our Story' },
-  { href: '/visit', label: 'Visit' },
-];
+export type NavLink = { href: string; label: string };
 
-export default function Navigation({ hours }: { hours?: WeekHours }) {
+// The header's links come from the root layout (the site module's getSiteNav:
+// pages whose Pilot Light add-on is off are left out; docs/site-conventions.md
+// §4, in Pilot Light). Up to 6 links, so no categories.
+export default function Navigation({ hours, links }: { hours?: WeekHours; links: NavLink[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();

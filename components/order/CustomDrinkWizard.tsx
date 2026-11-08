@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useCart } from "./CartProvider";
 import { formatCents } from "@/lib/money";
 import type { CustomDrinkData, CustomPrefill } from "@/lib/custom-drink-types";
@@ -48,12 +48,12 @@ export default function CustomDrinkWizard({
 
   const [step, setStep] = useState(0);
   const [sizeId, setSizeId] = useState<string>(sizes[0]?.id ?? "");
-  const [sugarFree, setSugarFree] = useState<boolean | null>(customizing ? false : null);
+  const [styleChoice, setSugarFree] = useState<boolean | null>(customizing ? false : null);
   const [baseId, setBaseId] = useState<string>(
     prefill && prefill.baseIds.length === 1 ? prefill.baseIds[0] : "",
   );
   const [syrupIds, setSyrupIds] = useState<string[]>(prefill?.syrupIds ?? []);
-  const [toppingIds, setToppingIds] = useState<string[]>(prefill?.toppingIds ?? []);
+  const [chosenToppingIds, setToppingIds] = useState<string[]>(prefill?.toppingIds ?? []);
   const [caffeine, setCaffeine] = useState(false);
   const [electrolytes, setElectrolytes] = useState(false);
   const [milkId, setMilkId] = useState<string | null>(null);
@@ -65,6 +65,22 @@ export default function CustomDrinkWizard({
     () => (prefill ? bases.filter((b) => prefill.baseIds.includes(b.id)) : []),
     [bases, prefill],
   );
+
+  // The locked base (customize) so we can name it and gate sugar-free.
+  const lockedBase = customizing ? bases.find((b) => b.id === baseId) : undefined;
+
+  // Which styles are offered: the locked base's availability, narrowed by any
+  // item-level restriction (sugar-free only / regular only). Unavailable ones are
+  // hidden (not disabled). Build-your-own picks the style first, so both show.
+  const baseAllowsRegular = !customizing || (lockedBase?.availableRegular ?? true);
+  const baseAllowsSugarFree =
+    !customizing || !!(lockedBase && (lockedBase.availableSugarFree || lockedBase.sugarFreeId));
+  const showRegular = baseAllowsRegular && !prefill?.sugarFreeOnly;
+  const showSugarFree = baseAllowsSugarFree && !prefill?.regularOnly;
+
+  // When only one style is offered, it's the style, so the step is complete and
+  // the (hidden) other option is never in play.
+  const sugarFree = customizing && !showRegular ? true : customizing && !showSugarFree ? false : styleChoice;
 
   // Options available for the chosen style (regular vs sugar-free).
   const availBases = useMemo(
@@ -82,16 +98,12 @@ export default function CustomDrinkWizard({
     [toppings, sugarFree],
   );
 
-  // If a selected topping is no longer available in the chosen style, drop it.
-  useEffect(() => {
-    setToppingIds((prev) => {
-      const ok = prev.filter((id) => availToppings.some((t) => t.id === id));
-      return ok.length === prev.length ? prev : ok;
-    });
-  }, [availToppings]);
+  // A selected topping that isn't available in the chosen style is dropped.
+  const toppingIds = useMemo(
+    () => chosenToppingIds.filter((id) => availToppings.some((t) => t.id === id)),
+    [chosenToppingIds, availToppings],
+  );
 
-  // The locked base (customize) so we can name it and gate sugar-free.
-  const lockedBase = customizing ? bases.find((b) => b.id === baseId) : undefined;
 
   // Sugar-free swaps the chosen base to its counterpart (Coke → Coke Zero). The
   // effective base is what we name in the summary and send to the server.
@@ -99,22 +111,6 @@ export default function CustomDrinkWizard({
   const effectiveBaseId =
     sugarFree && chosenBase?.sugarFreeId ? chosenBase.sugarFreeId : baseId;
 
-  // Which styles are offered: the locked base's availability, narrowed by any
-  // item-level restriction (sugar-free only / regular only). Unavailable ones are
-  // hidden (not disabled). Build-your-own picks the style first, so both show.
-  const baseAllowsRegular = !customizing || (lockedBase?.availableRegular ?? true);
-  const baseAllowsSugarFree =
-    !customizing || !!(lockedBase && (lockedBase.availableSugarFree || lockedBase.sugarFreeId));
-  const showRegular = baseAllowsRegular && !prefill?.sugarFreeOnly;
-  const showSugarFree = baseAllowsSugarFree && !prefill?.regularOnly;
-
-  // When only one style is offered, select it so the step is complete and the
-  // (hidden) other option is never in play.
-  useEffect(() => {
-    if (!customizing) return;
-    if (!showRegular && sugarFree !== true) setSugarFree(true);
-    else if (!showSugarFree && sugarFree !== false) setSugarFree(false);
-  }, [customizing, showRegular, showSugarFree, sugarFree]);
 
   const size = sizes.find((s) => s.id === sizeId);
   const paidSyrups = Math.max(0, syrupIds.length - freeSyrups);
@@ -129,6 +125,10 @@ export default function CustomDrinkWizard({
   // (availability differs); a customized item keeps its recipe.
   function chooseStyle(sf: boolean) {
     setSugarFree(sf);
+    // Toppings not offered in the new style are dropped, not kept for later.
+    setToppingIds((prev) =>
+      prev.filter((id) => toppings.some((t) => t.id === id && (sf ? t.availableSugarFree : t.availableRegular))),
+    );
     if (!customizing) {
       setBaseId("");
       setSyrupIds([]);

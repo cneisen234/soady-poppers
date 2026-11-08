@@ -1,0 +1,14 @@
+[
+  {
+    "key": "order-status",
+    "feature": "orders",
+    "description": "emails the customer about their order's new status",
+    "endpointPath": "/api/pilot-light/order-status",
+    "appliesTo": {
+      "resource": "order",
+      "on": "status",
+      "statuses": ["ready", "out_for_delivery"],
+      "mode": "after"
+    }
+  }
+]

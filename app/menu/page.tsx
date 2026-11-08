@@ -41,8 +41,13 @@ const BP_STICKER = [
 function money(cents: number): string {
   return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
+// The menu's price tiers are the regular prices: a product discount on the first
+// drink of a category must not change the price shown for the whole section
+// (sale prices show on the order page, struck through).
+const regular = (v: Product['variations'][number]) => v.originalPriceCents ?? v.priceCents;
+
 function variationKey(p: Product | undefined): string {
-  return (p?.variations ?? []).map((v) => `${v.name}:${v.priceCents}`).join('|');
+  return (p?.variations ?? []).map((v) => `${v.name}:${regular(v)}`).join('|');
 }
 
 // Price-tier chips derived from the section's own items: if every category shares
@@ -58,13 +63,13 @@ function deriveTiers(section: MenuSectionConfig, byCat: Map<string, Product[]>):
   if (uniform) {
     return perCat[0].first!.variations.map((v) => {
       const [label, ...rest] = v.name.split(' · ');
-      return { label, detail: rest.join(' · ') || undefined, price: money(v.priceCents) };
+      return { label, detail: rest.join(' · ') || undefined, price: money(regular(v)) };
     });
   }
   return perCat.map((c) => {
     const short = c.group.category.replace(/\s*Lemonade$/i, '').trim() || c.group.category;
     const v = c.first!.variations[0];
-    return { label: short, detail: v.name, price: money(v.priceCents) };
+    return { label: short, detail: v.name, price: money(regular(v)) };
   });
 }
 

@@ -28,7 +28,8 @@ import {
 import type { CustomConfig, CustomDrinkData } from "@/lib/custom-drink-types";
 import { notifyNewOrder } from "@/lib/notifications";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
-import { deliveryOpenNow } from "@/lib/status";
+import { deliveryOpenNow, deliveryWindowToday } from "@/lib/status";
+import { bestDiscount, loadLiveDiscounts, type LiveDiscount } from "@/lib/product-discounts";
 
 export type { DeliveryAddress };
 export type CheckoutLine = { variationId: string; qty: number; custom?: CustomConfig };
@@ -118,6 +119,8 @@ type LineRow = {
   vSold: boolean;
   pId: string;
   pName: string;
+  /** The product's category (product discounts can target a whole category). */
+  categoryId: string | null;
   pAvail: boolean;
   pHidden: boolean;
   taxRateBps: number | null;
@@ -137,6 +140,7 @@ async function queryLineRows(lines: CheckoutLine[]): Promise<Map<string, LineRow
       vSold: variations.soldOut,
       pId: products.id,
       pName: products.name,
+      categoryId: products.categoryId,
       pAvail: products.available,
       pHidden: products.hidden,
       taxRateBps: products.taxRateBps,
@@ -265,11 +269,14 @@ export async function validateFulfillment(
     return { ok: false, problems: ["That fulfillment method isn't available."] };
   }
   if (f.method === "delivery") {
-    const { hours } = await getSettings();
-    if (!deliveryOpenNow(new Date(), hours)) {
+    const s = await getSettings();
+    const now = new Date();
+    const delivery = { enabled: s.deliveryEnabled, hours: s.deliveryHours };
+    if (!deliveryOpenNow(now, s.hours, delivery)) {
+      const window = deliveryWindowToday(now, delivery);
       return {
         ok: false,
-        problems: ["Local delivery is only available 10 AM–2 PM while we're open."],
+        problems: [window ? `Local delivery is only available ${window} while we're open.` : "Local delivery isn't available today."],
       };
     }
     const a = f.address;
@@ -290,6 +297,9 @@ type SnapshotItem = {
   unitPriceCents: number;
   qty: number;
   lineTotalCents: number;
+  /** The product discount on this line (checkout rule 5), and its total off. */
+  productDiscountId: string | null;
+  productDiscountCents: number;
   taxable: boolean;
   taxRateBps: number;
   taxCents: number;
@@ -383,9 +393,9 @@ function computeTotals(
   discount: DiscountResolution = NO_DISCOUNT,
   customData: CustomDrinkData | null = null,
   recipes: Map<string, RecipeContext> = new Map(),
+  productDiscounts: LiveDiscount[] = [],
 ): { totals: OrderTotals; items: SnapshotItem[]; appliedCouponCode: string | null } {
   let subtotal = 0;
-  let tax = 0;
   let itemCount = 0;
   const items: SnapshotItem[] = [];
 
@@ -396,14 +406,18 @@ function computeTotals(
     // For a customized menu item the base is the ITEM's own variation price (set
     // in the admin), not the custom product's; build-your-own uses the custom
     // product's size price.
-    let unitPrice = r.price;
+    // Product discounts (rules 2-4): the one best live discount comes off the
+    // size's base price only; add-ons stay full price.
+    const sale = bestDiscount({ variationId: r.vId, productId: r.pId, categoryId: r.categoryId, basePriceCents: r.price }, productDiscounts);
+    const basePrice = r.price - (sale?.offPerUnitCents ?? 0);
+    let unitPrice = basePrice;
     let customSummary: string | undefined;
     const rc = line.custom?.recipeProductId;
     const customizable = r.pId === CUSTOM_PRODUCT_ID || (!!rc && rc === r.pId);
     if (line.custom && customData && customizable) {
       const addon = resolveCustomAddon(line.custom, customData, rc ? recipes.get(rc) : undefined);
       if (addon.ok) {
-        unitPrice = r.price + addon.addonCents;
+        unitPrice = basePrice + addon.addonCents;
         customSummary = addon.summary;
       }
     }
@@ -411,9 +425,8 @@ function computeTotals(
     subtotal += lineSubtotal;
     itemCount += line.qty;
     // null → inherit global rate; 0 → exempt; else custom rate (basis points).
+    // The line's tax is worked out below, once the discount is known.
     const rate = r.taxRateBps == null ? s.taxRateBps : r.taxRateBps;
-    const lineTax = Math.round((lineSubtotal * rate) / 10000);
-    tax += lineTax;
     items.push({
       variationId: r.vId,
       productId: r.pId,
@@ -422,9 +435,11 @@ function computeTotals(
       unitPriceCents: unitPrice,
       qty: line.qty,
       lineTotalCents: lineSubtotal,
+      productDiscountId: sale?.id ?? null,
+      productDiscountCents: (sale?.offPerUnitCents ?? 0) * line.qty,
       taxable: rate > 0,
       taxRateBps: rate,
-      taxCents: lineTax,
+      taxCents: 0,
       track: r.track,
       customSummary,
     });
@@ -433,6 +448,18 @@ function computeTotals(
   // The discount (vendor rate or coupon) comes off the merchandise subtotal (not
   // tax or delivery), clamped so it can never exceed the subtotal.
   const { discountCents, appliedCouponCode } = applyDiscount(subtotal, discount);
+
+  // Tax is on what the customer actually pays for each line: the discount is
+  // shared across the lines by their price (whole cents, adding up exactly to the
+  // discount), then each line is taxed at its own rate (exempt lines stay 0).
+  // Taxing the full price first over-taxed every discounted order.
+  const shares = shareByLine(items.map((it) => it.lineTotalCents), discountCents);
+  let tax = 0;
+  items.forEach((it, i) => {
+    it.taxCents = Math.round(((it.lineTotalCents - shares[i]) * it.taxRateBps) / 10000);
+    tax += it.taxCents;
+  });
+
   const feeCents = method === "delivery" ? deliveryFeeCents(itemCount, s) : 0;
   const totalCents = subtotal - discountCents + tax + feeCents;
   return {
@@ -440,6 +467,22 @@ function computeTotals(
     items,
     appliedCouponCode,
   };
+}
+
+/** Split `amount` cents across lines in proportion to their totals (largest remainder, so the parts sum to `amount`). */
+function shareByLine(lineTotals: number[], amount: number): number[] {
+  const total = lineTotals.reduce((a, b) => a + b, 0);
+  if (!amount || !total) return lineTotals.map(() => 0);
+  const exact = lineTotals.map((t) => (t * amount) / total);
+  const parts = exact.map(Math.floor);
+  let left = amount - parts.reduce((a, b) => a + b, 0);
+  const byRemainder = exact.map((e, i) => ({ i, r: e - Math.floor(e) })).sort((a, b) => b.r - a.r);
+  for (const { i } of byRemainder) {
+    if (left <= 0) break;
+    parts[i] += 1;
+    left -= 1;
+  }
+  return parts;
 }
 
 export type OrderQuote = OrderTotals & {
@@ -460,11 +503,12 @@ export async function quoteOrder(
 ): Promise<OrderQuote> {
   const s = await getSettings();
   const hasCustom = lines.some((l) => l.custom);
-  const [rows, discount, customData, recipes] = await Promise.all([
+  const [rows, discount, customData, recipes, productDiscounts] = await Promise.all([
     queryLineRows(lines),
     resolveDiscount(email, couponCode),
     hasCustom ? getCustomDrink() : Promise.resolve(null),
     loadRecipeContexts(lines),
+    loadLiveDiscounts(),
   ]);
   const { totals, appliedCouponCode } = computeTotals(
     rows,
@@ -474,6 +518,7 @@ export async function quoteOrder(
     discount,
     customData,
     recipes,
+    productDiscounts,
   );
   return {
     ...totals,
@@ -509,11 +554,12 @@ export async function placeOrder(
   }
 
   const hasCustom = lines.some((l) => l.custom);
-  const [rows, discount, customData, recipes] = await Promise.all([
+  const [rows, discount, customData, recipes, productDiscounts] = await Promise.all([
     queryLineRows(lines),
     resolveDiscount(customer.email, couponCode),
     hasCustom ? getCustomDrink() : Promise.resolve(null),
     loadRecipeContexts(lines),
+    loadLiveDiscounts(),
   ]);
   const { totals, items, appliedCouponCode } = computeTotals(
     rows,
@@ -523,6 +569,7 @@ export async function placeOrder(
     discount,
     customData,
     recipes,
+    productDiscounts,
   );
   if (totals.totalCents <= 0) throw new Error("Order total is invalid.");
 
@@ -571,6 +618,8 @@ export async function placeOrder(
         unitPriceCents: it.unitPriceCents,
         qty: it.qty,
         lineTotalCents: it.lineTotalCents,
+        productDiscountId: it.productDiscountId,
+        productDiscountCents: it.productDiscountCents,
         taxable: it.taxable,
         taxRateBps: it.taxRateBps,
         taxCents: it.taxCents,

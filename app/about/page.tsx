@@ -1,20 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { topSeller } from '@/lib/shop';
 
 export const metadata: Metadata = {
   title: 'Our Story — Soady Poppers Soda Pop Shop | Fairview, MI',
   description:
     "The story behind Soady Poppers — a family-run soda pop shop in Fairview, Michigan named after the goodest dog around, and home of Big Poppa's Kettle Corn.",
 };
-
-const values = [
-  { emoji: '🍓', title: 'Made fresh, to order', body: 'Every soda, lemonade and latte is built when you order it — nothing sits around.' },
-  { emoji: '🎨', title: 'Your combo, your call', body: 'Over 20 flavors to mix and match. Dreaming one up? We’ll make it happen, ingredients permitting.' },
-  { emoji: '🐶', title: 'Named after the pup', body: 'Our heart-sunglasses mascot is a real member of the family — the face of the whole shop.' },
-  { emoji: '🏡', title: 'Small-town proud', body: 'Family-owned in Fairview, and part of what makes this little corner of Michigan sweet.' },
-];
 
 export default function AboutPage() {
   return (

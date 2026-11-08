@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Pacifico, Fredoka, Nunito_Sans, Bangers, Permanent_Marker } from "next/font/google";
 import Script from "next/script";
+import { connection } from "next/server";
+import { getSiteNav } from "@/lib/pilot-light";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import OrderBar from "@/components/OrderBar";
-import HideOnAdmin from "@/components/HideOnAdmin";
 import { getSettings } from "@/lib/settings";
 
 // reCAPTCHA v3 is behavioral — loading it site-wide lets Google build a risk
@@ -65,25 +66,32 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page renders on request, so the hours in the header and footer (and the
+  // Visit page's) are always the ones in the database. A page built at deploy kept
+  // the hours from that day until the next deploy.
+  await connection();
   const { hours } = await getSettings();
+  // Each page with the Pilot Light add-on behind it: the site module leaves out
+  // the ones that are off (docs/site-conventions.md §4, in Pilot Light).
+  const nav = await getSiteNav([
+    { href: "/", label: "Home" },
+    { href: "/menu", label: "Menu" },
+    { href: "/order", label: "Order", addon: "ecommerce" },
+    { href: "/big-poppas", label: "Big Poppa's" },
+    { href: "/about", label: "Our Story" },
+    { href: "/visit", label: "Visit" },
+  ]);
   return (
     <html
       lang="en"
       className={`${pacifico.variable} ${fredoka.variable} ${nunito.variable} ${bangers.variable} ${permanentMarker.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* Storefront chrome — hidden on the internal /admin console. */}
-        <HideOnAdmin>
-          <Navigation hours={hours} />
-        </HideOnAdmin>
+        <Navigation hours={hours} links={nav.links} />
         <main className="flex-1">{children}</main>
-        <HideOnAdmin>
-          <Footer hours={hours} />
-        </HideOnAdmin>
+        <Footer hours={hours} columns={nav.footer} />
         {/* Mobile-only floating "Order Online" bar (hidden on the order flow) */}
-        <HideOnAdmin>
-          <OrderBar />
-        </HideOnAdmin>
+        <OrderBar />
         {RECAPTCHA_SITE_KEY && (
           <Script
             src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}

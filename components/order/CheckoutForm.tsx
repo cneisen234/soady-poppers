@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RecaptchaNote } from "@/components/RecaptchaNote";
 import Link from "next/link";
 import { useCart } from "./CartProvider";
 import { formatCents } from "@/lib/money";
 import { availableMethods, type FulfillmentMethod } from "@/lib/fulfillment";
-import { deliveryOpenNow, type WeekHours } from "@/lib/status";
+import { deliveryOpenNow, deliveryWindowToday, type WeekHours } from "@/lib/status";
 
 // Square Web Payments SDK — loaded from their CDN, tokenizes the card inside a
 // Square-hosted iframe so raw card data never touches our server.
@@ -14,7 +16,20 @@ type SquareCard = {
   attach: (selector: string) => Promise<void>;
   tokenize: () => Promise<TokenizeResult>;
 };
-type SquarePayments = { card: () => Promise<SquareCard> };
+type SquarePayments = { card: (options?: { style?: Record<string, Record<string, string>> }) => Promise<SquareCard> };
+
+/** Square draws the card field in its own frame: blend its outline into ours (the
+ * site's field border wraps it), in the site's colors, so it isn't a box in a box. */
+function cardStyle(): Record<string, Record<string, string>> {
+  const css = getComputedStyle(document.documentElement);
+  const paper = css.getPropertyValue("--paper").trim() || "#ffffff";
+  const ink = css.getPropertyValue("--foreground").trim() || "#000000";
+  return {
+    ".input-container": { borderColor: paper, borderRadius: "10px" },
+    ".input-container.is-focus": { borderColor: paper },
+    input: { backgroundColor: paper, color: ink },
+  };
+}
 type SquareSdk = { payments: (appId: string, locationId: string) => SquarePayments };
 declare global {
   interface Window {
@@ -153,8 +168,9 @@ const DELIVERY_CITIES = ["Fairview", "Mio"];
 const DELIVERY_ZIPS = ["48647", "48621"];
 const DELIVERY_STATE = "MI"; // Michigan-only delivery area.
 
-// Local delivery availability (10 AM–2 PM shop time, and only while the shop is
-// open) is computed in the shop's timezone — see deliveryOpenNow in lib/status.
+// Local delivery availability (switched on, inside the day's delivery hours, and
+// only while the shop is open; all set in Pilot Light) is computed in the shop's
+// timezone — see deliveryOpenNow in lib/status.
 
 type Address = { line1: string; line2: string; city: string; state: string; zip: string };
 const EMPTY_ADDRESS: Address = {
@@ -170,13 +186,19 @@ export default function CheckoutForm({
   locationId,
   squareEnv,
   hours,
+  deliveryEnabled,
+  deliveryHours,
 }: {
   appId: string;
   locationId: string;
   squareEnv: string;
   hours: WeekHours;
+  /** Local delivery on/off and its hours each day (the shop's settings). */
+  deliveryEnabled: boolean;
+  deliveryHours: WeekHours;
 }) {
   const { items, subtotalCents, clear, remove } = useCart();
+  const router = useRouter();
   const lines = useMemo(
     () => items.map((i) => ({ variationId: i.variationId, qty: i.qty, custom: i.custom })),
     [items],
@@ -185,7 +207,9 @@ export default function CheckoutForm({
 
   const cardRef = useRef<SquareCard | null>(null);
   const [cardReady, setCardReady] = useState(false);
-  const [totals, setTotals] = useState<Totals | null>(null);
+  // The latest quote; none while the cart is empty.
+  const [quote, setQuote] = useState<Totals | null>(null);
+  const totals = lines.length > 0 ? quote : null;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<{
@@ -194,11 +218,17 @@ export default function CheckoutForm({
     method: FulfillmentMethod;
   } | null>(null);
 
-  const [method, setMethod] = useState<FulfillmentMethod>("pickup");
+  const [chosenMethod, setMethod] = useState<FulfillmentMethod>("pickup");
   // Whether local delivery is currently within its 9 AM–2 PM window. null until
   // hydrated on the client (computed from the clock, so it stays null on the
   // server to avoid a hydration mismatch), then refreshed every minute.
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean | null>(null);
+  // Delivery chosen while its window is closed (or it closes mid-session) counts as pickup, so an unavailable
+  // method can never be submitted.
+  const method: FulfillmentMethod = deliveryAvailable === false && chosenMethod === "delivery" ? "pickup" : chosenMethod;
+  // Today's delivery hours, e.g. "10 AM–2 PM" (null: none today, or switched off).
+  const [deliveryWindow, setDeliveryWindow] = useState<string | null>(null);
+  const deliveryNote = deliveryWindow ? `Local delivery is only available ${deliveryWindow} while we're open` : "Local delivery isn't available today";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -229,7 +259,7 @@ export default function CheckoutForm({
       if (cancelled || !window.Square) return;
       try {
         const payments = window.Square.payments(appId, locationId);
-        const card = await payments.card();
+        const card = await payments.card({ style: cardStyle() }).catch(() => payments.card());
         await card.attach("#card-container");
         if (cancelled) return;
         cardRef.current = card;
@@ -249,10 +279,7 @@ export default function CheckoutForm({
   // email, or coupon changes (email drives any vendor discount; the coupon its
   // own). Debounced so typing doesn't fire a request per keystroke.
   useEffect(() => {
-    if (lines.length === 0) {
-      setTotals(null);
-      return;
-    }
+    if (lines.length === 0) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       fetch("/api/order/quote", {
@@ -267,7 +294,7 @@ export default function CheckoutForm({
       })
         .then((r) => r.json())
         .then((d) => {
-          if (!cancelled && d.ok) setTotals(d);
+          if (!cancelled && d.ok) setQuote(d);
         })
         .catch(() => {});
     }, 350);
@@ -279,17 +306,17 @@ export default function CheckoutForm({
 
   // Track the local-delivery window on the client and refresh it each minute.
   useEffect(() => {
-    const check = () => setDeliveryAvailable(deliveryOpenNow(new Date(), hours));
+    const delivery = { enabled: deliveryEnabled, hours: deliveryHours };
+    const check = () => {
+      const now = new Date();
+      setDeliveryAvailable(deliveryOpenNow(now, hours, delivery));
+      setDeliveryWindow(deliveryWindowToday(now, delivery));
+    };
     check();
     const id = setInterval(check, 60_000);
     return () => clearInterval(id);
-  }, [hours]);
+  }, [hours, deliveryEnabled, deliveryHours]);
 
-  // If the window is closed (or closes mid-session) while delivery is selected,
-  // fall back to pickup so an unavailable method can never be submitted.
-  useEffect(() => {
-    if (deliveryAvailable === false && method === "delivery") setMethod("pickup");
-  }, [deliveryAvailable, method]);
 
   useEffect(() => {
     if (placed) window.scrollTo({ top: 0, behavior: "auto" });
@@ -444,7 +471,7 @@ export default function CheckoutForm({
   }
   function dismissPaused() {
     clear();
-    window.location.href = "/order";
+    router.push("/order");
   }
 
   return (
@@ -535,7 +562,7 @@ export default function CheckoutForm({
           <div className="flex gap-2 mb-6">
             {methods.map((m) => {
               const active = method === m;
-              // Delivery is disabled outside its 10 AM–2 PM window, or while closed.
+              // Delivery is greyed out outside today's delivery hours, while closed, or when it's switched off.
               const disabled = m === "delivery" && deliveryAvailable === false;
               return (
                 <button
@@ -543,12 +570,8 @@ export default function CheckoutForm({
                   type="button"
                   onClick={() => setMethod(m)}
                   disabled={disabled}
-                  aria-label={
-                    disabled ? "Local delivery unavailable — only 10 AM–2 PM while open" : undefined
-                  }
-                  title={
-                    disabled ? "Local delivery is only available 10 AM–2 PM while we're open" : undefined
-                  }
+                  aria-label={disabled ? `Local delivery unavailable: ${deliveryNote}` : undefined}
+                  title={disabled ? deliveryNote : undefined}
                   className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors"
                   style={{
                     fontFamily: "var(--font-fredoka)",
@@ -582,7 +605,14 @@ export default function CheckoutForm({
             className="mb-6 rounded-lg px-3 py-2 text-sm"
             style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
           >
-            🚚 Local delivery is available <strong>10 AM–2 PM</strong> while we&rsquo;re open.
+            🚚{" "}
+            {deliveryWindow ? (
+              <>
+                Local delivery is available <strong>{deliveryWindow}</strong> while we&rsquo;re open.
+              </>
+            ) : (
+              <>Local delivery isn&rsquo;t available today.</>
+            )}
           </p>
         )}
 
@@ -594,7 +624,14 @@ export default function CheckoutForm({
             className="mb-3 rounded-lg px-3 py-2 text-sm"
             style={{ backgroundColor: "var(--teal-soft)", color: "var(--teal-deep)" }}
           >
-            🚚 Local delivery is available <strong>10 AM–2 PM</strong> while we&rsquo;re open.
+            🚚{" "}
+            {deliveryWindow ? (
+              <>
+                Local delivery is available <strong>{deliveryWindow}</strong> while we&rsquo;re open.
+              </>
+            ) : (
+              <>Local delivery isn&rsquo;t available today.</>
+            )}
           </p>
         )}
         <div className="space-y-3">
@@ -717,7 +754,7 @@ export default function CheckoutForm({
         </h2>
         <div
           id="card-container"
-          className="rounded-xl px-3 py-2 min-h-14"
+          className="rounded-xl p-1 min-h-14"
           style={{ border: "2px solid var(--charcoal)", backgroundColor: "var(--paper)" }}
         />
         {!cardReady && !error && (
@@ -838,6 +875,9 @@ export default function CheckoutForm({
           <p className="mt-3 text-xs text-center" style={{ color: "var(--stone)" }}>
             {method === "delivery" ? "Local delivery" : "Pickup at the shop"} · secure
             payment by Square
+          </p>
+          <p className="mt-2 text-xs text-center" style={{ color: "var(--stone)" }}>
+            <RecaptchaNote />
           </p>
         </div>
       </div>

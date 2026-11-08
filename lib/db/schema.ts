@@ -23,6 +23,7 @@ import {
   index,
   uniqueIndex,
   check,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 // ---- Shared JSON shapes ----
@@ -221,6 +222,10 @@ export const orderItems = pgTable(
     taxable: boolean("taxable").notNull().default(true),
     taxRateBps: integer("tax_rate_bps").notNull().default(0),
     taxCents: integer("tax_cents").notNull().default(0),
+    // Kindling's product discounts extension: the one discount applied to this line
+    // (see lib/checkout.ts) and how much it took off in total (per unit x qty).
+    productDiscountId: uuid("product_discount_id").references(() => productDiscounts.id, { onDelete: "set null" }),
+    productDiscountCents: integer("product_discount_cents").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("order_items_order_idx").on(t.orderId)],
@@ -300,7 +305,7 @@ export const customBases = pgTable("custom_bases", {
   availableSugarFree: boolean("available_sugar_free").notNull().default(false),
   // The sugar-free counterpart of this (regular) base — e.g. Coke → Coke Zero.
   // The sugar-free toggle swaps to this base and back. Null = no counterpart.
-  sugarFreeId: uuid("sugar_free_id"),
+  sugarFreeId: uuid("sugar_free_id").references((): AnyPgColumn => customBases.id, { onDelete: "set null" }),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -375,6 +380,13 @@ export const settings = pgTable(
     addonElectrolyteCents: integer("addon_electrolyte_cents").notNull().default(100),
     addonMilkCents: integer("addon_milk_cents").notNull().default(50),
     hours: jsonb("hours").$type<WeekHours>(),
+    // Local delivery: switched on or off, and the driver's hours each day (same
+    // shape as `hours`; delivery also needs the shop open). Managed in Pilot Light.
+    deliveryEnabled: boolean("delivery_enabled").notNull().default(true),
+    deliveryHours: jsonb("delivery_hours")
+      .$type<WeekHours>()
+      .notNull()
+      .default(sql`'{"0":{"open":10,"close":14},"1":{"open":10,"close":14},"2":{"open":10,"close":14},"3":{"open":10,"close":14},"4":{"open":10,"close":14},"5":{"open":10,"close":14},"6":{"open":10,"close":14}}'::jsonb`),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check("settings_singleton", sql`${t.id} = 1`)],
@@ -421,3 +433,53 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 export const paymentsRelations = relations(payments, ({ one }) => ({
   order: one(orders, { fields: [payments.orderId], references: [orders.id] }),
 }));
+
+// ---- Product discounts (Kindling's e-commerce extension) ----
+// Scheduled, automatic discounts (no code): a fixed amount or a percentage off a
+// whole category, a product in every size, or one size, from starts_at until
+// ends_at (null = until switched off), while active. The checkout rule is in
+// lib/product-discounts.ts (Pilot Light's demo/schema/ecommerce-product-discounts.sql).
+
+export const productDiscountKind = pgEnum("product_discount_kind", ["fixed", "percent"]);
+
+export const productDiscounts = pgTable(
+  "product_discounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: productDiscountKind("kind").notNull().default("fixed"),
+    amountOffCents: integer("amount_off_cents"),
+    discountBps: integer("discount_bps"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("product_discounts_live_idx").on(t.active, t.startsAt, t.endsAt),
+    check(
+      "product_discounts_amount",
+      sql`(${t.kind} = 'fixed' AND ${t.amountOffCents} > 0 AND ${t.discountBps} IS NULL) OR (${t.kind} = 'percent' AND ${t.discountBps} > 0 AND ${t.discountBps} <= 10000 AND ${t.amountOffCents} IS NULL)`,
+    ),
+    check("product_discounts_window", sql`${t.endsAt} IS NULL OR ${t.endsAt} > ${t.startsAt}`),
+  ],
+);
+
+export const productDiscountTargets = pgTable(
+  "product_discount_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    discountId: uuid("discount_id")
+      .notNull()
+      .references(() => productDiscounts.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id").references(() => categories.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "cascade" }),
+    variationId: uuid("variation_id").references(() => variations.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("product_discount_targets_discount_idx").on(t.discountId),
+    check("product_discount_targets_one", sql`num_nonnulls(${t.categoryId}, ${t.productId}, ${t.variationId}) = 1`),
+  ],
+);

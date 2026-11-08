@@ -43,6 +43,29 @@
 
   --background: var(--cream);
   --foreground: var(--charcoal);
+
+  /* A touch deeper than --magenta-deep: Pilot Light's text on --pink-soft reads
+     4.8:1 (--magenta-deep is 4.3:1, under the 4.5:1 rule) and looks the same. */
+  --magenta-ink: #B81F6C;
+
+  /* Kindling site conventions: theme (docs/site-conventions.md, in Pilot Light) */
+  --surface: var(--paper);
+  --muted-foreground: var(--ash);
+  --brand: var(--pink);
+  --brand-foreground: var(--charcoal);
+  --font-body: var(--font-nunito);
+  --font-heading: var(--font-fredoka);
+
+  /* style */
+  --outline: var(--charcoal);
+  --outline-width: 2px;
+  --radius: 16px;
+  --radius-field: 12px;
+  --radius-button: 10px;
+  --shadow: 3px 3px 0 var(--charcoal);
+  --shadow-button: 2px 2px 0 var(--charcoal);
+  --brand-soft: var(--pink-soft);
+  --brand-soft-foreground: var(--magenta-ink);
 }
 
 @theme inline {
@@ -535,7 +558,18 @@ h1, h2, h3, h4, h5, h6 {
   .bp-flicker { animation: none; }
 }
 
-/* Lift the site-wide reCAPTCHA v3 badge above the mobile order bar / cart button */
-@media (max-width: 767px) {
-  .grecaptcha-badge { bottom: 88px !important; }
+/* Sale prices (Kindling's product discounts): the regular price, struck through. */
+.price-was { color: var(--stone); text-decoration: line-through; font-weight: 500; }
+.sale-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: var(--font-fredoka), sans-serif; font-weight: 600; font-size: 0.72rem;
+  letter-spacing: 0.02em; color: var(--magenta-ink); background: var(--pink-soft);
+  border: 1.5px solid var(--magenta-ink); border-radius: 9999px; padding: 0.1rem 0.55rem;
 }
+
+/* Square's card field keeps an empty line under it for errors: shown only when it has one. */
+#card-container .sq-card-message:not(.sq-card-message-error) { display: none; }
+
+/* reCAPTCHA's floating badge covers buttons and prices; the protected form (checkout)
+   shows Google's notice instead (components/RecaptchaNote.tsx), which Google allows. */
+.grecaptcha-badge { visibility: hidden; }

@@ -1,6 +1,8 @@
 // Order notifications — email only (per the owners' decision to skip SMS):
-//   1. an alert email to the shop (ORDER_ALERT_EMAIL), and
-//   2. a branded confirmation email to the customer.
+//   1. an alert email to the shop (ORDER_ALERT_EMAIL),
+//   2. a branded confirmation email to the customer, and
+//   3. the customer's update when the order is ready or out for delivery.
+// Each names its kind (siteEmailHeaders) so Pilot Light knows the shop's own mail.
 // Both go through Twilio SendGrid. BEST-EFFORT: failures are logged but never
 // thrown — the order is already placed and paid, so a notification hiccup must
 // not fail the customer's confirmation.
@@ -10,6 +12,7 @@
 import type { FulfillmentMethod } from "@/lib/fulfillment";
 import { formatCents } from "@/lib/money";
 import { formatAddress } from "@/lib/address";
+import { siteEmailHeaders, type SiteEmailKind } from "@/lib/pilot-light";
 
 export type OrderNotice = {
   shortId: string;
@@ -37,18 +40,23 @@ function discountLabel(n: OrderNotice): string {
 
 // ---- Low-level SendGrid send ----
 
+/** Whether an email went out (and why not, when it didn't). */
+export type SendResult = { ok: true } | { ok: false; reason: "server-misconfigured" | "send-failed" };
+
 async function sendEmail(opts: {
+  /** What the email is (required): Pilot Light sorts the shop's mail by it (site conventions §5). */
+  kind: SiteEmailKind;
   to: string;
   subject: string;
   text: string;
   html: string;
   replyTo?: { email: string; name?: string };
-}): Promise<void> {
+}): Promise<SendResult> {
   const apiKey = process.env.SENDGRID_API_KEY;
   const from = process.env.ORDER_FROM_EMAIL;
   if (!apiKey || !from) {
     console.warn("[notify] SendGrid not configured — skipping email.");
-    return;
+    return { ok: false, reason: "server-misconfigured" };
   }
   const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
     method: "POST",
@@ -58,6 +66,7 @@ async function sendEmail(opts: {
       from: { email: from, name: "Soady Poppers" },
       ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
       subject: opts.subject,
+      headers: siteEmailHeaders(opts.kind),
       // SendGrid requires content parts in increasing preference: text, then HTML.
       content: [
         { type: "text/plain", value: opts.text },
@@ -67,7 +76,9 @@ async function sendEmail(opts: {
   });
   if (!res.ok) {
     console.error("[notify] SendGrid send failed:", res.status, await res.text());
+    return { ok: false, reason: "send-failed" };
   }
+  return { ok: true };
 }
 
 function itemLinesText(n: OrderNotice): string {
@@ -158,6 +169,7 @@ Total: ${formatCents(n.totalCents)}`;
   );
 
   await sendEmail({
+    kind: "order_alert",
     to,
     subject: `🥤 New order #${n.shortId} — ${methodLabel(n.method)} — ${n.customerName}`,
     text,
@@ -196,6 +208,7 @@ We'll be in touch shortly. Thanks for supporting Soady Poppers!`;
   // Customer replies go to the shop's inbox.
   const replyTo = process.env.CUSTOMER_REPLY_TO_EMAIL;
   await sendEmail({
+    kind: "order_confirmation",
     to: n.customerEmail,
     subject: `Your Soady Poppers order is confirmed 🥤 (#${n.shortId})`,
     text,
@@ -220,8 +233,8 @@ export async function notifyOrderStatus(o: {
   customerName: string;
   customerEmail?: string;
   status: "ready" | "out_for_delivery";
-}): Promise<void> {
-  if (!o.customerEmail) return;
+}): Promise<SendResult | null> {
+  if (!o.customerEmail) return null;
   const ready = o.status === "ready";
   const subject = ready
     ? `Your Soady Poppers order is ready for pickup 🥤 (#${o.shortId})`
@@ -247,7 +260,8 @@ Thanks for supporting Soady Poppers!`;
   );
 
   const replyTo = process.env.CUSTOMER_REPLY_TO_EMAIL;
-  await sendEmail({
+  return sendEmail({
+    kind: "order_update",
     to: o.customerEmail,
     subject,
     text,

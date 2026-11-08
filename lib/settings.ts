@@ -5,7 +5,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
-import { DEFAULT_HOURS, type WeekHours } from "@/lib/status";
+import { DEFAULT_DELIVERY_HOURS, DEFAULT_HOURS, type WeekHours } from "@/lib/status";
 
 export type Settings = {
   acceptingOrders: boolean;
@@ -23,11 +23,14 @@ export type Settings = {
   addonElectrolyteCents: number;
   addonMilkCents: number;
   hours: WeekHours;
+  /** Local delivery on/off and its hours each day (managed in Pilot Light). */
+  deliveryEnabled: boolean;
+  deliveryHours: WeekHours;
 };
 
 // Coerce the stored JSON into a valid week of hours, falling back to defaults.
-function coerceHours(raw: unknown): WeekHours {
-  if (!raw || typeof raw !== "object") return DEFAULT_HOURS;
+function coerceHours(raw: unknown, fallback: WeekHours = DEFAULT_HOURS): WeekHours {
+  if (!raw || typeof raw !== "object") return fallback;
   const src = raw as Record<string, unknown>;
   const out: WeekHours = {};
   for (let d = 0; d < 7; d++) {
@@ -58,6 +61,8 @@ const DEFAULTS: Settings = {
   addonElectrolyteCents: 100,
   addonMilkCents: 50,
   hours: DEFAULT_HOURS,
+  deliveryEnabled: true,
+  deliveryHours: DEFAULT_DELIVERY_HOURS,
 };
 
 export const getSettings = cache(async (): Promise<Settings> => {
@@ -78,6 +83,8 @@ export const getSettings = cache(async (): Promise<Settings> => {
     addonElectrolyteCents: row.addonElectrolyteCents,
     addonMilkCents: row.addonMilkCents,
     hours: coerceHours(row.hours),
+    deliveryEnabled: row.deliveryEnabled,
+    deliveryHours: coerceHours(row.deliveryHours, DEFAULT_DELIVERY_HOURS),
   };
 });
 

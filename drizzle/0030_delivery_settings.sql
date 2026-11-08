@@ -1,0 +1,2 @@
+ALTER TABLE "settings" ADD COLUMN "delivery_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "settings" ADD COLUMN "delivery_hours" jsonb DEFAULT '{"0":{"open":10,"close":14},"1":{"open":10,"close":14},"2":{"open":10,"close":14},"3":{"open":10,"close":14},"4":{"open":10,"close":14},"5":{"open":10,"close":14},"6":{"open":10,"close":14}}'::jsonb NOT NULL;
