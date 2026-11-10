@@ -27,6 +27,7 @@ import {
 } from "@/lib/custom-drink";
 import type { CustomConfig, CustomDrinkData } from "@/lib/custom-drink-types";
 import { notifyNewOrder } from "@/lib/notifications";
+import { notifyChange } from "@/lib/pilot-light";
 import { isMethodAvailable, type FulfillmentMethod } from "@/lib/fulfillment";
 import { deliveryOpenNow, deliveryWindowToday } from "@/lib/status";
 import { bestDiscount, loadLiveDiscounts, type LiveDiscount } from "@/lib/product-discounts";
@@ -587,7 +588,7 @@ export async function placeOrder(
 
   // Persist order + items + payment and decrement inventory, atomically.
   const shortId = makeShortId();
-  await db.transaction(async (tx) => {
+  const orderId = await db.transaction(async (tx) => {
     const [o] = await tx
       .insert(orders)
       .values({
@@ -644,7 +645,14 @@ export async function placeOrder(
         .set({ stock: sql`GREATEST(${products.stock} - ${qty}, 0)`, updatedAt: new Date() })
         .where(eq(products.id, pid));
     }
+    return o.id;
   });
+
+  // Tell Pilot Light (the owner's notices: app, Lena's chat, email). Best-effort:
+  // the order is placed either way, and the change is recorded before the nudge.
+  await notifyChange({ type: "order.placed", ref: { table: "orders", id: orderId }, key: `order.placed:${orderId}` }).catch((err) =>
+    console.error("[checkout] Couldn't record the new order for Pilot Light:", err),
+  );
 
   // Best-effort emails — never block the order.
   await notifyNewOrder({
